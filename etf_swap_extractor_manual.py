@@ -129,12 +129,12 @@ class ETFSwapDataExtractor:
             response = requests.get(xml_url, headers=self.headers, timeout=30)
             
             if response.status_code == 200:
-                # Parse the XML for specific outputs with timeout handling
                 try:
+                    # Parse the XML for specific outputs with timeout handling
                     swap_data = self._parse_nport_xml_specific(response.content, ticker, xml_url, series_id)
-                
-                # Save to database
-                if swap_data:
+                    
+                    # Save to database
+                    if swap_data:
                         # Extract period_of_report from XML
                         root = ET.fromstring(response.content)
                         period_of_report = None
@@ -150,8 +150,8 @@ class ETFSwapDataExtractor:
                         for i in range(0, len(swap_data), batch_size):
                             batch = swap_data[i:i + batch_size]
                             self.save_swap_data_specific(batch, filing_date, period_of_report)
-                
-                return swap_data
+                    
+                    return swap_data
                 except ET.ParseError as e:
                     logger.error(f"XML parsing error for {ticker}: {e}")
                     return []
@@ -246,13 +246,13 @@ class ETFSwapDataExtractor:
                     if elements:
                         for element in elements:
                             try:
-                            swap_info = self._extract_specific_swap_info(element, namespaces, ticker, filing_url)
-                            if swap_info:
+                                swap_info = self._extract_specific_swap_info(element, namespaces, ticker, filing_url)
+                                if swap_info:
                                     swap_info['period_of_report'] = period_of_report
                                     swap_info['index_name'] = index_name
                                     swap_info['index_identifier'] = index_identifier
-                                swap_data.append(swap_info)
-                except Exception as e:
+                                    swap_data.append(swap_info)
+                            except Exception as e:
                                 logger.error(f"Error processing element: {e}")
                                 continue
                 except Exception as e:
@@ -660,7 +660,7 @@ def main():
     
     # Load ticker mappings from CSV
     try:
-        csv_path = "ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv"
+        csv_path = "etf_tickers.csv"
         ticker_mappings = pd.read_csv(csv_path)
         # Convert CIK numbers to 10-digit strings with leading zeros
         ticker_mappings['CIK'] = ticker_mappings['CIK'].astype(str).str.zfill(10)
