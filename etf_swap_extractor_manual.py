@@ -31,14 +31,17 @@ class ETFSwapDataExtractor:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Create tables if they don't exist (removed DROP statements)
+        # Drop existing tables to ensure clean schema
+        cursor.execute('DROP TABLE IF EXISTS swap_data')
+        cursor.execute('DROP TABLE IF EXISTS ticker_mappings')
+        
+        # Create tables with updated schema
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS swap_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ticker TEXT NOT NULL,
                 filing_date TEXT NOT NULL,
                 period_of_report TEXT NOT NULL,
-                report_date TEXT,
                 index_name TEXT,
                 index_identifier TEXT,
                 counterparty_name TEXT,
@@ -721,36 +724,50 @@ class ETFSwapDataExtractor:
             return []
 
 def main():
-    """Main function to process a single ticker and export results"""
-    # Initialize the extractor
-    extractor = ETFSwapDataExtractor()
-    
-    # Get ticker from command line argument
+    """Main function to run the ETF Swap Data Extractor"""
     import sys
-    if len(sys.argv) > 1:
-        ticker = sys.argv[1].upper()
-    else:
-        ticker = input("Enter ticker symbol (e.g., TSLL): ").upper()
+    import pandas as pd
     
-    # Get ticker mapping from database
-    ticker_data = extractor.get_ticker_mapping(ticker)
+    if len(sys.argv) < 2:
+        print("Please provide a ticker symbol as a command-line argument")
+        print("Usage: python etf_swap_extractor_manual.py TICKER")
+        sys.exit(1)
     
-    if not ticker_data:
-        print(f"Error: {ticker} is not supported. Please add it using add_ticker_mapping()")
-        return
+    ticker = sys.argv[1].upper()
+    print(f"Processing ticker: {ticker}")
     
-    # Default end date is today
-    end_date = datetime.now().strftime("%Y-%m-%d")
-    
-    # Process the ticker
-    print(f"\nProcessing {ticker}...")
-    start_date = ticker_data.get('start_date', '2019-01-01')
-    extractor.process_ticker(ticker, ticker_data['cik'], start_date, end_date, ticker_data['series_id'])
-    
-    # Export to CSV
-    output_file = f"{ticker.lower()}_swap_data.csv"
-    extractor.export_to_csv(output_file, ticker)
-    print(f"\nData exported to {output_file}")
+    # Load ticker mappings from CSV
+    try:
+        csv_path = "ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv"
+        ticker_mappings = pd.read_csv(csv_path)
+        # Convert CIK numbers to 10-digit strings with leading zeros
+        ticker_mappings['CIK'] = ticker_mappings['CIK'].astype(str).str.zfill(10)
+        
+        # Find the ticker in the mappings
+        ticker_data = ticker_mappings[ticker_mappings['Ticker'] == ticker]
+        if ticker_data.empty:
+            print(f"Error: Ticker {ticker} not found in the database")
+            sys.exit(1)
+        
+        cik = ticker_data['CIK'].iloc[0]
+        series_id = ticker_data['Series'].iloc[0]
+        print(f"Found CIK: {cik}")
+        print(f"Found Series ID: {series_id}")
+        
+        # Initialize the extractor
+        extractor = ETFSwapDataExtractor()
+        
+        # Process the ticker
+        extractor.process_ticker(ticker, cik, series_id=series_id)
+        
+        # Export to CSV
+        csv_path = f"{ticker.lower()}_swap_data.csv"
+        extractor.export_to_csv(csv_path, ticker)
+        print(f"Data exported to {csv_path}")
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
