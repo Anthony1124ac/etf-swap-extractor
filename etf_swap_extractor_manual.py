@@ -521,6 +521,14 @@ class ETFSwapDataExtractor:
         # Clear existing data for this ticker
         self.clear_ticker_data(ticker)
         
+        # Set default start date to 2022-01-01 if not provided
+        if not start_date:
+            start_date = "2022-01-01"
+        if not end_date:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            
+        logger.info(f"Fetching filings from {start_date} to {end_date}")
+        
         # Get historical filings
         logger.info(f"Fetching historical filings for {ticker}")
         filings = self.get_historical_filings(cik, start_date, end_date)
@@ -751,14 +759,16 @@ def main():
         
         cik = ticker_data['CIK'].iloc[0]
         series_id = ticker_data['Series'].iloc[0]
+        start_date = ticker_data['Start Date'].iloc[0] if 'Start Date' in ticker_data.columns else "2019-01-01"
         print(f"Found CIK: {cik}")
         print(f"Found Series ID: {series_id}")
+        print(f"Using start date: {start_date}")
         
         # Initialize the extractor
         extractor = ETFSwapDataExtractor()
         
-        # Process the ticker
-        extractor.process_ticker(ticker, cik, series_id=series_id)
+        # Process the ticker with the correct start date
+        extractor.process_ticker(ticker, cik, start_date=start_date, series_id=series_id)
         
         # Export to CSV
         csv_path = f"{ticker.lower()}_swap_data.csv"
