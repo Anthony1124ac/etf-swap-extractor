@@ -432,41 +432,33 @@ class ETFSwapDataExtractor:
         } for row in results]
 
     def get_historical_filings(self, cik: str, start_date: str = None, end_date: str = None) -> List[Dict]:
-        """Get historical N-PORT filings for a given CIK using the correct SEC endpoint"""
+        logger.info(f"[get_historical_filings] Start: cik={cik}, start_date={start_date}, end_date={end_date}")
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
         if not end_date:
             end_date = datetime.now().strftime("%Y-%m-%d")
-        
-        logger.info(f"Fetching filings for CIK {cik} from {start_date} to {end_date}")
-        
-        # Convert dates to SEC format
-        start_date_dt = parse(start_date)
-        end_date_dt = parse(end_date)
-        
-        # SEC submissions endpoint for all filings
-        url = f"https://data.sec.gov/submissions/CIK{cik.zfill(10)}.json"
-        
+        logger.info(f"[get_historical_filings] Using start_date={start_date}, end_date={end_date}")
         try:
+            url = f"https://data.sec.gov/submissions/CIK{cik.zfill(10)}.json"
+            logger.info(f"[get_historical_filings] Requesting SEC URL: {url}")
             response = requests.get(url, headers=self.headers, timeout=30)
+            logger.info(f"[get_historical_filings] SEC response status: {response.status_code}")
             if response.status_code != 200:
                 logger.error(f"Error fetching filings: {response.status_code}")
                 return []
-                
             data = response.json()
             nport_filings = []
-            
-            # Process recent filings
             recent = data.get('filings', {}).get('recent', {})
             if recent:
                 forms = recent.get('form', [])
                 accession_numbers = recent.get('accessionNumber', [])
                 filing_dates = recent.get('filingDate', [])
-                
                 for i, form in enumerate(forms):
                     if form == 'NPORT-P':
                         filing_date = filing_dates[i]
                         filing_dt = parse(filing_date)
+                        start_date_dt = parse(start_date)
+                        end_date_dt = parse(end_date)
                         if start_date_dt <= filing_dt <= end_date_dt:
                             acc_no = accession_numbers[i].replace('-', '')
                             if acc_no:
@@ -475,14 +467,14 @@ class ETFSwapDataExtractor:
                                     'filing_date': filing_date,
                                     'filing_url': xml_url
                                 })
-            
-            # Process older filings
             files = data.get('filings', {}).get('files', [])
             for file_info in files:
                 if file_info.get('form') == 'NPORT-P':
                     filing_date = file_info.get('filingDate')
                     if filing_date:
                         filing_dt = parse(filing_date)
+                        start_date_dt = parse(start_date)
+                        end_date_dt = parse(end_date)
                         if start_date_dt <= filing_dt <= end_date_dt:
                             acc_no = file_info.get('accessionNumber', '').replace('-', '')
                             if acc_no:
@@ -491,12 +483,10 @@ class ETFSwapDataExtractor:
                                     'filing_date': filing_date,
                                     'filing_url': xml_url
                                 })
-            
-            # Sort filings by date
+            logger.info(f"[get_historical_filings] Found {len(nport_filings)} NPORT-P filings")
             nport_filings.sort(key=lambda x: x['filing_date'], reverse=True)
-            logger.info(f"Found {len(nport_filings)} N-PORT filings for CIK {cik}")
+            logger.info(f"[get_historical_filings] End: returning {len(nport_filings)} filings")
             return nport_filings
-            
         except requests.Timeout:
             logger.error(f"Timeout while fetching filings for CIK {cik}")
             return []
