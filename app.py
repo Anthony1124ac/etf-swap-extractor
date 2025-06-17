@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, flash
+from flask import Flask, render_template, request, send_file, flash, redirect
 from etf_swap_extractor_manual import ETFSwapDataExtractor
 import os
 import tempfile
@@ -8,6 +8,7 @@ import pandas as pd
 import sys
 import redis
 from rq import Queue
+import boto3
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -34,6 +35,23 @@ for file in os.listdir('.'):
 redis_url = os.environ.get('REDIS_URL')
 redis_conn = redis.from_url(redis_url)
 q = Queue(connection=redis_conn)
+
+# S3 setup
+def upload_to_s3(local_path, s3_key):
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+        aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
+        region_name=os.environ['AWS_DEFAULT_REGION']
+    )
+    bucket = os.environ['S3_BUCKET_NAME']
+    s3.upload_file(local_path, bucket, s3_key)
+    url = s3.generate_presigned_url(
+        'get_object',
+        Params={'Bucket': bucket, 'Key': s3_key},
+        ExpiresIn=3600
+    )
+    return url
 
 # Try multiple possible locations for the CSV file
 possible_paths = [
@@ -75,9 +93,11 @@ def home():
 def run_etf_extraction(ticker, cik, series_id):
     extractor = ETFSwapDataExtractor()
     extractor.process_ticker(ticker, cik, series_id=series_id)
-    csv_path = f"{ticker.lower()}_swap_data.csv"
-    extractor.export_to_csv(csv_path, ticker)
-    return csv_path
+    local_csv_path = f"{ticker.lower()}_swap_data.csv"
+    extractor.export_to_csv(local_csv_path, ticker)
+    s3_key = os.path.basename(local_csv_path)
+    s3_url = upload_to_s3(local_csv_path, s3_key)
+    return s3_url
 
 @app.route('/process', methods=['POST'])
 def process_ticker():
@@ -105,8 +125,8 @@ def job_status(job_id):
     if job is None:
         return 'Job not found', 404
     if job.is_finished:
-        # Send the file if job is done
-        return send_file(job.result, as_attachment=True, download_name=os.path.basename(job.result), mimetype='text/csv')
+        # Redirect to S3 URL if job is done
+        return redirect(job.result)
     elif job.is_failed:
         return 'Job failed', 500
     else:
