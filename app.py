@@ -6,6 +6,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 import pandas as pd
 import sys
+import redis
+from rq import Queue
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -27,6 +29,11 @@ app.logger.info(f'Current directory: {os.getcwd()}')
 app.logger.info('Files in current directory:')
 for file in os.listdir('.'):
     app.logger.info(f'  {file}')
+
+# Redis and RQ setup
+redis_url = os.environ.get('REDIS_URL')
+redis_conn = redis.from_url(redis_url)
+q = Queue(connection=redis_conn)
 
 # Try multiple possible locations for the CSV file
 possible_paths = [
@@ -64,6 +71,14 @@ except Exception as e:
 def home():
     return render_template('index.html')
 
+# Background job function
+def run_etf_extraction(ticker, cik, series_id):
+    extractor = ETFSwapDataExtractor()
+    extractor.process_ticker(ticker, cik, series_id=series_id)
+    csv_path = f"{ticker.lower()}_swap_data.csv"
+    extractor.export_to_csv(csv_path, ticker)
+    return csv_path
+
 @app.route('/process', methods=['POST'])
 def process_ticker():
     ticker = request.form.get('ticker', '').strip().upper()
@@ -72,46 +87,30 @@ def process_ticker():
         flash('Please enter a ticker symbol')
         return render_template('index.html')
     
-    try:
-        app.logger.info(f'Processing request for ticker: {ticker}')
-        
-        # Look up CIK and series ID in the ticker mappings
-        if ticker not in ticker_to_cik:
-            flash(f'No CIK found for ticker {ticker}. Please make sure the ticker is in the database.')
-            return render_template('index.html')
-        
-        cik = ticker_to_cik[ticker]
-        series_id = ticker_to_series[ticker]
-        app.logger.info(f'Found CIK {cik} and series ID {series_id} for ticker {ticker}')
-        
-        # Create a temporary directory for the database and CSV
-        with tempfile.TemporaryDirectory() as temp_dir:
-            db_path = os.path.join(temp_dir, 'etf_swaps.db')
-            
-            # Initialize the extractor with the temporary database
-            extractor = ETFSwapDataExtractor(db_path=db_path)
-            
-            # Process the ticker with both CIK and series ID
-            extractor.process_ticker(ticker, cik, series_id=series_id)
-            
-            # Export to CSV
-            csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
-            extractor.export_to_csv(csv_path, ticker)
-            
-            app.logger.info(f'Successfully processed {ticker}')
-            
-            # Send the file to the user
-            return send_file(
-                csv_path,
-                as_attachment=True,
-                download_name=f'{ticker.lower()}_swap_data.csv',
-                mimetype='text/csv'
-            )
-            
-    except Exception as e:
-        app.logger.error(f'Error processing {ticker}: {str(e)}')
-        flash(f'Error processing ticker: {str(e)}')
+    if ticker not in ticker_to_cik:
+        flash(f'No CIK found for ticker {ticker}. Please make sure the ticker is in the database.')
         return render_template('index.html')
+    
+    cik = ticker_to_cik[ticker]
+    series_id = ticker_to_series[ticker]
+    app.logger.info(f'Found CIK {cik} and series ID {series_id} for ticker {ticker}')
+    
+    # Enqueue the background job
+    job = q.enqueue(run_etf_extraction, ticker, cik, series_id)
+    return render_template('processing.html', job_id=job.get_id())
+
+@app.route('/status/<job_id>')
+def job_status(job_id):
+    job = q.fetch_job(job_id)
+    if job is None:
+        return 'Job not found', 404
+    if job.is_finished:
+        # Send the file if job is done
+        return send_file(job.result, as_attachment=True, download_name=os.path.basename(job.result), mimetype='text/csv')
+    elif job.is_failed:
+        return 'Job failed', 500
+    else:
+        return 'Job is still running. Please refresh this page in a moment.'
 
 # Error handlers
 @app.errorhandler(404)
