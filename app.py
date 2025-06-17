@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, send_file, flash
-from etf_swap_extractor_manual import ETFSwapExtractor
+from etf_swap_extractor_manual import ETFSwapDataExtractor
 import os
 import tempfile
 import logging
@@ -41,7 +41,7 @@ def process_ticker():
             csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
             
             # Initialize the extractor with the temporary database
-            extractor = ETFSwapExtractor(db_path=db_path)
+            extractor = ETFSwapDataExtractor(db_path=db_path)
             
             # Process the ticker
             extractor.process_ticker(ticker)
