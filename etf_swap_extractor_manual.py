@@ -11,10 +11,16 @@ import pandas as pd
 from dateutil.parser import parse
 import logging
 from bs4 import BeautifulSoup
+import redis
+from rq import Queue
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
+
+redis_url = os.environ.get('REDIS_URL')
+redis_conn = redis.from_url(redis_url)
+q = Queue(connection=redis_conn)
 
 class ETFSwapDataExtractor:
     def __init__(self, db_path: str = "etf_swap_data.db"):
@@ -499,6 +505,7 @@ class ETFSwapDataExtractor:
     
     def process_ticker(self, ticker: str, cik: str, start_date: str = None, end_date: str = None, series_id: str = None):
         logger.info(f"[process_ticker] Start: ticker={ticker}, cik={cik}, start_date={start_date}, end_date={end_date}, series_id={series_id}")
+        self.clear_ticker_data(ticker)
         if not start_date:
             start_date = "2022-01-01"
         if not end_date:
@@ -506,7 +513,6 @@ class ETFSwapDataExtractor:
         logger.info(f"[process_ticker] Fetching historical filings for {ticker}")
         filings = self.get_historical_filings(cik, start_date, end_date)
         logger.info(f"[process_ticker] Found {len(filings)} filings for {ticker}")
-        self.clear_ticker_data(ticker)
         batch_size = 5
         for i in range(0, len(filings), batch_size):
             batch = filings[i:i + batch_size]
