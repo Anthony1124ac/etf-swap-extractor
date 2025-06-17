@@ -1,4 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# exit on error
+set -o errexit
+
+# Install system dependencies
+apt-get update
+apt-get install -y python3-dev build-essential libxml2-dev libxslt1-dev
+
+# Install Python packages
+pip install --upgrade pip setuptools wheel
+pip install -r requirements.txt
 
 # Check if Python 3.11 is installed
 if ! command -v python3.11 &> /dev/null; then
