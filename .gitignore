@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -22,8 +21,14 @@ wheels/
 *.egg
 
 # Virtual Environment
+.env
+.venv
+env/
 venv/
 ENV/
+env.bak/
+venv.bak/
+etf_env/
 
 # IDE
 .idea/
@@ -31,20 +36,22 @@ ENV/
 *.swp
 *.swo
 
-# Logs
-logs/
-*.log
-
-# Database
-*.db
-*.sqlite3
-
-# Temporary files
+# OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# CSV files (except ticker mappings)
+# Project specific
 *.csv
-!ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv
+*.xml
+*.json
+*.log
+*.db
+logs/
 
 # Temporary files
 *.csv

@@ -6,7 +6,6 @@ import logging
 from logging.handlers import RotatingFileHandler
 import pandas as pd
 import sys
-import traceback
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -59,7 +58,6 @@ try:
     app.logger.info(f'Successfully loaded {len(ticker_to_cik)} ticker mappings')
 except Exception as e:
     app.logger.error(f'Error loading CSV file: {str(e)}')
-    app.logger.error(traceback.format_exc())
     sys.exit(1)
 
 @app.route('/', methods=['GET'])
@@ -89,18 +87,15 @@ def process_ticker():
         # Create a temporary directory for the database and CSV
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = os.path.join(temp_dir, 'etf_swaps.db')
-            app.logger.info(f'Created temporary database at: {db_path}')
             
             # Initialize the extractor with the temporary database
             extractor = ETFSwapDataExtractor(db_path=db_path)
             
             # Process the ticker with both CIK and series ID
-            app.logger.info(f'Starting to process ticker {ticker}')
             extractor.process_ticker(ticker, cik, series_id=series_id)
             
             # Export to CSV
             csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
-            app.logger.info(f'Exporting data to CSV: {csv_path}')
             extractor.export_to_csv(csv_path, ticker)
             
             app.logger.info(f'Successfully processed {ticker}')
@@ -115,20 +110,17 @@ def process_ticker():
             
     except Exception as e:
         app.logger.error(f'Error processing {ticker}: {str(e)}')
-        app.logger.error(traceback.format_exc())
         flash(f'Error processing ticker: {str(e)}')
         return render_template('index.html')
 
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
-    app.logger.error(f'404 error: {error}')
     return render_template('index.html'), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     app.logger.error(f'Server Error: {error}')
-    app.logger.error(traceback.format_exc())
     return render_template('index.html'), 500
 
 if __name__ == '__main__':
