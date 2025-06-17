@@ -13,23 +13,37 @@ ls -la
 echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
+# Get the absolute path of the CSV file
+CSV_FILE="etf_ticker_cik_series_6_16_25.csv"
+CSV_PATH="$(pwd)/$CSV_FILE"
+TARGET_DIR="/opt/render/project/src"
+
+echo "CSV file path: $CSV_PATH"
+echo "Target directory: $TARGET_DIR"
+
 # Ensure the CSV file exists
-if [ ! -f "etf_ticker_cik_series_6_16_25.csv" ]; then
-    echo "Error: CSV file not found in current directory"
+if [ ! -f "$CSV_PATH" ]; then
+    echo "Error: CSV file not found at $CSV_PATH"
+    echo "Current directory contents:"
+    ls -la
     exit 1
 fi
 
 # Create target directory if it doesn't exist
 echo "Creating target directory..."
-mkdir -p /opt/render/project/src
+mkdir -p "$TARGET_DIR"
 
 # Copy the CSV file
 echo "Copying CSV file..."
-cp etf_ticker_cik_series_6_16_25.csv /opt/render/project/src/
+cp "$CSV_PATH" "$TARGET_DIR/"
 
 # Verify the file was copied
 echo "Verifying file copy..."
-ls -l /opt/render/project/src/etf_ticker_cik_series_6_16_25.csv
+ls -l "$TARGET_DIR/$CSV_FILE"
+
+# Print contents of target directory
+echo "Contents of target directory:"
+ls -la "$TARGET_DIR"
 
 echo "Build process completed. Starting application..."
 gunicorn app:app 

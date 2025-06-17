@@ -28,15 +28,28 @@ app.logger.info('Files in current directory:')
 for file in os.listdir('.'):
     app.logger.info(f'  {file}')
 
-# Load ticker mappings from CSV
-csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'etf_ticker_cik_series_6_16_25.csv')
-app.logger.info(f'Loading ticker mappings from: {csv_path}')
+# Try multiple possible locations for the CSV file
+possible_paths = [
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'etf_ticker_cik_series_6_16_25.csv'),
+    os.path.join(os.getcwd(), 'etf_ticker_cik_series_6_16_25.csv'),
+    '/opt/render/project/src/etf_ticker_cik_series_6_16_25.csv',
+    'etf_ticker_cik_series_6_16_25.csv'
+]
 
-if not os.path.exists(csv_path):
-    app.logger.error(f'CSV file not found at: {csv_path}')
+csv_path = None
+for path in possible_paths:
+    app.logger.info(f'Trying path: {path}')
+    if os.path.exists(path):
+        csv_path = path
+        app.logger.info(f'Found CSV file at: {path}')
+        break
+
+if csv_path is None:
+    app.logger.error('CSV file not found in any of the expected locations')
     sys.exit(1)
 
 try:
+    app.logger.info(f'Loading ticker mappings from: {csv_path}')
     ticker_mappings = pd.read_csv(csv_path)
     ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
     app.logger.info(f'Successfully loaded {len(ticker_to_cik)} ticker mappings')
