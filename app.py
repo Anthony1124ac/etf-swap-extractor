@@ -38,15 +38,24 @@ def process_ticker():
         # Create a temporary directory for the database and CSV
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = os.path.join(temp_dir, 'etf_swaps.db')
-            csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
             
             # Initialize the extractor with the temporary database
             extractor = ETFSwapDataExtractor(db_path=db_path)
             
+            # Get the CIK from the database
+            ticker_info = extractor.get_ticker_mapping(ticker)
+            if not ticker_info:
+                flash(f'No CIK found for ticker {ticker}. Please make sure the ticker is in the database.')
+                return render_template('index.html')
+            
+            cik = ticker_info['cik']
+            app.logger.info(f'Found CIK {cik} for ticker {ticker}')
+            
             # Process the ticker
-            extractor.process_ticker(ticker)
+            extractor.process_ticker(ticker, cik)
             
             # Export to CSV
+            csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
             extractor.export_to_csv(csv_path, ticker)
             
             app.logger.info(f'Successfully processed {ticker}')
