@@ -442,6 +442,8 @@ class ETFSwapDataExtractor:
         if not end_date:
             end_date = datetime.now().strftime("%Y-%m-%d")
         
+        logger.info(f"Fetching filings for CIK {cik} from {start_date} to {end_date}")
+        
         # Convert dates to SEC format
         start_date_dt = parse(start_date)
         end_date_dt = parse(end_date)
@@ -450,7 +452,7 @@ class ETFSwapDataExtractor:
         url = f"https://data.sec.gov/submissions/CIK{cik.zfill(10)}.json"
         
         try:
-            response = requests.get(url, headers=self.headers)
+            response = requests.get(url, headers=self.headers, timeout=30)
             if response.status_code != 200:
                 logger.error(f"Error fetching filings: {response.status_code}")
                 return []
@@ -471,11 +473,12 @@ class ETFSwapDataExtractor:
                         filing_dt = parse(filing_date)
                         if start_date_dt <= filing_dt <= end_date_dt:
                             acc_no = accession_numbers[i].replace('-', '')
-                            xml_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/primary_doc.xml"
-                            nport_filings.append({
-                                'filing_date': filing_date,
-                                'filing_url': xml_url
-                            })
+                            if acc_no:
+                                xml_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/primary_doc.xml"
+                                nport_filings.append({
+                                    'filing_date': filing_date,
+                                    'filing_url': xml_url
+                                })
             
             # Process older filings
             files = data.get('filings', {}).get('files', [])
@@ -495,28 +498,51 @@ class ETFSwapDataExtractor:
             
             # Sort filings by date
             nport_filings.sort(key=lambda x: x['filing_date'], reverse=True)
+            logger.info(f"Found {len(nport_filings)} N-PORT filings for CIK {cik}")
             return nport_filings
             
+        except requests.Timeout:
+            logger.error(f"Timeout while fetching filings for CIK {cik}")
+            return []
+        except requests.RequestException as e:
+            logger.error(f"Request error for CIK {cik}: {e}")
+            return []
         except Exception as e:
             logger.error(f"Error fetching historical filings: {e}")
             return []
     
     def process_ticker(self, ticker: str, cik: str, start_date: str = None, end_date: str = None, series_id: str = None):
         """Process a single ticker and extract swap data"""
+        logger.info(f"Starting to process ticker {ticker} with CIK {cik} and series ID {series_id}")
+        
         # Clear existing data for this ticker
         self.clear_ticker_data(ticker)
         
         # Get historical filings
+        logger.info(f"Fetching historical filings for {ticker}")
         filings = self.get_historical_filings(cik, start_date, end_date)
+        logger.info(f"Found {len(filings)} filings for {ticker}")
         
-        for filing in filings:
-            try:
-                # Process each filing
-                self.process_ticker_xml(ticker, filing['filing_url'], filing['filing_date'], series_id)
-                time.sleep(0.1)  # Rate limiting
-            except Exception as e:
-                logger.error(f"Error processing filing for {ticker}: {e}")
-                continue
+        # Process filings in smaller batches
+        batch_size = 5  # Process 5 filings at a time
+        for i in range(0, len(filings), batch_size):
+            batch = filings[i:i + batch_size]
+            logger.info(f"Processing batch {i//batch_size + 1} of {(len(filings) + batch_size - 1)//batch_size} for {ticker}")
+            
+            for filing in batch:
+                try:
+                    logger.info(f"Processing filing {filing['filing_date']} for {ticker}")
+                    # Process each filing
+                    self.process_ticker_xml(ticker, filing['filing_url'], filing['filing_date'], series_id)
+                    time.sleep(0.1)  # Rate limiting
+                except Exception as e:
+                    logger.error(f"Error processing filing for {ticker}: {e}")
+                    continue
+            
+            # Add a small delay between batches
+            time.sleep(0.5)
+        
+        logger.info(f"Finished processing {ticker}")
 
     def export_to_csv(self, output_file: str = "etf_swap_data.csv", ticker: str = None):
         """Export swap data to CSV file"""
