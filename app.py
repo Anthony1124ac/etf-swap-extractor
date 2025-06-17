@@ -51,6 +51,8 @@ if csv_path is None:
 try:
     app.logger.info(f'Loading ticker mappings from: {csv_path}')
     ticker_mappings = pd.read_csv(csv_path)
+    # Convert CIK numbers to 10-digit strings with leading zeros
+    ticker_mappings['CIK'] = ticker_mappings['CIK'].astype(str).str.zfill(10)
     ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
     app.logger.info(f'Successfully loaded {len(ticker_to_cik)} ticker mappings')
 except Exception as e:
