@@ -1,11 +1,12 @@
 from flask import Flask, render_template, request, send_file, flash
-from flask_cors import CORS
-from etf_swap_extractor_manual import ETFSwapDataExtractor
+from etf_swap_extractor_manual import ETFSwapExtractor
 import os
-from datetime import datetime
-import logging
 import tempfile
+import logging
 from logging.handlers import RotatingFileHandler
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
 
 # Configure logging
 if not os.path.exists('logs'):
@@ -15,35 +16,9 @@ file_handler.setFormatter(logging.Formatter(
     '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
 ))
 file_handler.setLevel(logging.INFO)
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
-app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
-
-# Initialize the ETF Swap Data Extractor
-extractor = ETFSwapDataExtractor()
-
-# Define ETF information
-etf_info = {
-    "TSLL": {
-        "cik": "0001424958",
-        "series_id": "S000072483",
-        "issuer": "Direxion",
-        "description": "Direxion Daily TSLA Bull 2X Shares"
-    },
-    "TQQQ": {
-        "cik": "0001424958",
-        "series_id": "S000072483",
-        "issuer": "ProShares",
-        "description": "ProShares UltraPro QQQ"
-    },
-    "NDVU": {
-        "cik": "0001424958",
-        "series_id": "S000072483",
-        "issuer": "Direxion",
-        "description": "Direxion Daily NVDA Bull 2X Shares"
-    }
-}
+app.logger.addHandler(file_handler)
+app.logger.setLevel(logging.INFO)
+app.logger.info('ETF Swap Extractor startup')
 
 @app.route('/', methods=['GET'])
 def home():
@@ -66,7 +41,7 @@ def process_ticker():
             csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
             
             # Initialize the extractor with the temporary database
-            extractor = ETFSwapDataExtractor(db_path=db_path)
+            extractor = ETFSwapExtractor(db_path=db_path)
             
             # Process the ticker
             extractor.process_ticker(ticker)
@@ -88,6 +63,16 @@ def process_ticker():
         app.logger.error(f'Error processing {ticker}: {str(e)}')
         flash(f'Error processing ticker: {str(e)}')
         return render_template('index.html')
+
+# Error handlers
+@app.errorhandler(404)
+def not_found_error(error):
+    return render_template('index.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    app.logger.error(f'Server Error: {error}')
+    return render_template('index.html'), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
