@@ -1,0 +1,726 @@
+import requests
+import sqlite3
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
+import time
+import re
+import os
+from typing import Dict, List, Optional, Tuple
+import json
+import pandas as pd
+from dateutil.parser import parse
+import logging
+from bs4 import BeautifulSoup
+
+# Configure logging
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
+
+class ETFSwapDataExtractor:
+    def __init__(self, db_path: str = "etf_swap_data.db"):
+        """Initialize the ETF Swap Data Extractor"""
+        self.db_path = db_path
+        self.base_url = "https://www.sec.gov"
+        self.headers = {
+            'User-Agent': 'VegaShares Anthony Crinieri tonycrinieri@gmail.com'  # REQUIRED by SEC
+        }
+        self.setup_database()
+    
+    def setup_database(self):
+        """Create the database and tables for storing swap data"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Create tables if they don't exist (removed DROP statements)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS swap_data (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker TEXT NOT NULL,
+                filing_date TEXT NOT NULL,
+                period_of_report TEXT NOT NULL,
+                index_name TEXT,
+                index_identifier TEXT,
+                counterparty_name TEXT,
+                fixed_or_floating TEXT,
+                floating_rt_index TEXT,
+                floating_rt_spread REAL,
+                notional_amt REAL,
+                filing_url TEXT,
+                extracted_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(ticker, filing_date, counterparty_name, notional_amt)
+            )
+        ''')
+        
+        # Create table for storing ticker to CIK mappings if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ticker_mappings (
+                ticker TEXT PRIMARY KEY,
+                cik TEXT NOT NULL,
+                company_name TEXT,
+                series_id TEXT,
+                start_date TEXT,
+                last_updated TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    def get_ticker_mapping(self, ticker: str) -> Optional[Dict]:
+        """Get the CIK and Series ID for a ticker from the database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT ticker, cik, company_name, series_id, start_date
+            FROM ticker_mappings
+            WHERE ticker = ?
+        ''', (ticker,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return {
+                'ticker': result[0],
+                'cik': result[1],
+                'company_name': result[2],
+                'series_id': result[3],
+                'start_date': result[4]
+            }
+        return None
+
+    def add_ticker_mapping(self, ticker: str, cik: str, series_id: str, company_name: str = None, start_date: str = None):
+        """Add a new ticker mapping to the database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO ticker_mappings 
+            (ticker, cik, company_name, series_id, start_date)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            ticker,
+            cik,
+            company_name,
+            series_id,
+            start_date or "2022-01-01"
+        ))
+        
+        conn.commit()
+        conn.close()
+
+    def process_ticker_xml(self, ticker: str, xml_url: str, filing_date: str = None, series_id: str = None):
+        """Process XML file for any ticker to extract swap data"""
+        if not filing_date:
+            # Try to extract date from URL
+            date_match = re.search(r'(\d{4})(\d{2})(\d{2})', xml_url)
+            if date_match:
+                filing_date = f"{date_match.group(1)}-{date_match.group(2)}-{date_match.group(3)}"
+            else:
+                filing_date = datetime.now().strftime("%Y-%m-%d")
+        
+        try:
+            response = requests.get(xml_url, headers=self.headers)
+            
+            if response.status_code == 200:
+                # Parse the XML for specific outputs
+                swap_data = self._parse_nport_xml_specific(response.content, ticker, xml_url, series_id)
+                
+                # Save to database
+                if swap_data:
+                    # Extract period_of_report from XML
+                    root = ET.fromstring(response.content)
+                    period_of_report = None
+                    try:
+                        period_elem = root.find('.//nport:repPdEndDt', namespaces={'nport': 'http://www.sec.gov/edgar/nport'})
+                        if period_elem is not None and period_elem.text:
+                            period_of_report = period_elem.text.strip()
+                    except Exception as e:
+                        logger.error(f"Error extracting period_of_report: {e}")
+                    
+                    self.save_swap_data_specific(swap_data, filing_date, period_of_report)
+                
+                return swap_data
+                
+            else:
+                logger.error(f"Failed to fetch XML for {ticker}. Status code: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            logger.error(f"Error fetching XML for {ticker}: {e}")
+            return []
+    
+    def _parse_nport_xml_specific(self, xml_content: bytes, ticker: str, filing_url: str, series_id: str = None) -> List[Dict]:
+        """Parse N-PORT XML content to extract specific swap data outputs for any ticker"""
+        swap_data = []
+        
+        try:
+            if isinstance(xml_content, bytes):
+                xml_str = xml_content.decode('utf-8')
+            else:
+                xml_str = xml_content
+            
+            # Parse XML with explicit namespace handling
+            root = ET.fromstring(xml_content)
+            
+            # Define namespaces
+            namespaces = {
+                '': 'http://www.sec.gov/edgar/nport',
+                'nport': 'http://www.sec.gov/edgar/nport',
+                'com': 'http://www.sec.gov/edgar/common',
+                'ncom': 'http://www.sec.gov/edgar/nportcommon',
+                'xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+            }
+            
+            # First check if this filing is for the correct series
+            if series_id:
+                series_elem = root.find('.//nport:seriesId', namespaces)
+                if series_elem is None or series_elem.text != series_id:
+                    return []
+            
+            # Extract period_of_report from <repPdEndDt>
+            period_of_report = None
+            try:
+                period_elem = root.find('.//nport:repPdEndDt', namespaces)
+                if period_elem is not None and period_elem.text:
+                    period_of_report = period_elem.text.strip()
+            except Exception as e:
+                logger.error(f"Error extracting period_of_report: {e}")
+            
+            # Extract index information from varInfo section
+            var_section = root.find('.//nport:varInfo', namespaces)
+            index_name = None
+            index_identifier = None
+            
+            if var_section is not None:
+                # Find designated index name - try multiple paths
+                index_name_elem = var_section.find('.//nport:nameDesignatedIndex', namespaces)
+                if index_name_elem is None:
+                    index_name_elem = var_section.find('.//nameDesignatedIndex')
+                if index_name_elem is not None:
+                    index_name = index_name_elem.text.strip()
+                
+                # Find index identifier - try multiple paths
+                index_id_elem = var_section.find('.//nport:indexIdentifier', namespaces)
+                if index_id_elem is None:
+                    index_id_elem = var_section.find('.//indexIdentifier')
+                if index_id_elem is not None:
+                    index_identifier = index_id_elem.text.strip()
+            
+            # Look for investment securities and derivatives
+            investment_paths = [
+                './/nport:invstOrSec',
+                './/nport:derivativeInstrument',
+                './/nport:derivative',
+                './/nport:investment',
+                './/nport:security',
+                './/nport:holding',
+                './/invstOrSec',
+                './/derivativeInstrument',
+                './/derivative',
+                './/investment',
+                './/security',
+                './/holding'
+            ]
+            
+            for path in investment_paths:
+                try:
+                    elements = root.findall(path, namespaces)
+                    if elements:
+                        for element in elements:
+                            swap_info = self._extract_specific_swap_info(element, namespaces, ticker, filing_url)
+                            if swap_info:
+                                swap_info['period_of_report'] = period_of_report
+                                swap_info['index_name'] = index_name
+                                swap_info['index_identifier'] = index_identifier
+                                swap_data.append(swap_info)
+                except Exception as e:
+                    logger.error(f"Error processing path {path}: {str(e)}")
+                    continue
+                        
+        except ET.ParseError as e:
+            logger.error(f"XML parsing error: {e}")
+        except Exception as e:
+            logger.error(f"Error parsing N-PORT XML: {e}")
+        
+        return swap_data
+    
+    def _extract_specific_swap_info(self, element: ET.Element, namespaces: Dict, ticker: str, filing_url: str) -> Optional[Dict]:
+        """Extract the 7 specific swap information fields for any designated index"""
+        
+        # Get all text content from this element
+        element_text = ET.tostring(element, encoding='unicode')
+        
+        # Check if this element contains swap/derivative information
+        swap_indicators = ['swap', 'derivative', 'deriv', 'forward', 'future', 'option', 
+                          'floatingRtIndex', 'fixedOrFloating', 'counterparty', 'notional']
+        
+        has_swap_indicators = any(indicator.lower() in element_text.lower() for indicator in swap_indicators)
+        
+        if not has_swap_indicators:
+            return None
+        
+        swap_info = {
+            'ticker': ticker,
+            'filing_url': filing_url
+        }
+        
+        try:
+            # Field mapping for your specific requirements
+            field_mappings = {
+                'index_name': ['indexName', 'indexTitle', 'index', 'benchmarkName', 'name', 'title', 
+                              'desc', 'description', 'issuerName', 'securityName'],
+                'index_identifier': ['indexIdentifier', 'indexId', 'benchmarkId', 'identifier', 'id',
+                                   'securityId', 'cusip', 'isin'],
+                'counterparty_name': ['counterpartyName', 'ctrPtyName', 'counterparty', 'ctrPty',
+                                    'cptyName', 'partyName'],
+                'notional_amt': ['notionalAmt', 'notional', 'notionalAmount', 'amt', 'principalAmt',
+                               'nominalAmt', 'faceAmt']
+            }
+            
+            def find_field_value(field_variations, element, namespaces):
+                for field in field_variations:
+                    for ns_prefix in ['', 'nport', 'com', 'ncom']:
+                        if ns_prefix:
+                            path = f'.//{ns_prefix}:{field}'
+                        else:
+                            path = f'.//{field}'
+                        try:
+                            elem = element.find(path, namespaces)
+                            if elem is not None and elem.text:
+                                return elem.text.strip()
+                        except Exception:
+                            continue
+                    try:
+                        elem = element.find(f'.//{field}')
+                        if elem is not None and elem.text:
+                            return elem.text.strip()
+                    except Exception:
+                        continue
+                return None
+            
+            # Extract each required field
+            for output_field, field_variations in field_mappings.items():
+                value = find_field_value(field_variations, element, namespaces)
+                if value:
+                    if output_field in ['notional_amt']:
+                        try:
+                            clean_value = re.sub(r'[,$%]', '', value)
+                            swap_info[output_field] = float(clean_value)
+                        except ValueError:
+                            swap_info[output_field] = value
+                    else:
+                        swap_info[output_field] = value
+
+            # Extract fixedOrFloating, floatingRtIndex, floatingRtSpread
+            floating_pmnt_desc = None
+            try:
+                floating_pmnt_desc = element.find('.//nport:derivativeInfo/nport:swapDeriv/nport:floatingPmntDesc', namespaces)
+                if floating_pmnt_desc is None:
+                    floating_pmnt_desc = element.find('.//derivativeInfo/swapDeriv/floatingPmntDesc')
+            except Exception:
+                pass
+            
+            if floating_pmnt_desc is not None:
+                swap_info['fixed_or_floating'] = floating_pmnt_desc.attrib.get('fixedOrFloating')
+                
+                floating_rt_index = floating_pmnt_desc.attrib.get('floatingRtIndex', '')
+                if floating_rt_index:
+                    valid_indices = ['1 month Sofr + spread', 'OBFR01', 'FEDL01', 'OBFR']
+                    if floating_rt_index in valid_indices:
+                        swap_info['floating_rt_index'] = floating_rt_index
+                    else:
+                        swap_info['floating_rt_index'] = '1 month Sofr + spread'
+                
+                spread_val = floating_pmnt_desc.attrib.get('floatingRtSpread')
+                if spread_val is not None:
+                    try:
+                        swap_info['floating_rt_spread'] = float(spread_val)
+                    except ValueError:
+                        swap_info['floating_rt_spread'] = spread_val
+            
+            # Only return if we have at least some meaningful swap data
+            required_fields = ['counterparty_name', 'fixed_or_floating', 'floating_rt_index', 'notional_amt']
+            has_swap_data = all(field in swap_info for field in required_fields)
+            
+            if has_swap_data:
+                return swap_info
+                
+        except Exception as e:
+            logger.error(f"Error extracting specific swap info: {e}")
+        
+        return None
+    
+    def save_swap_data_specific(self, swap_data: List[Dict], filing_date: str, period_of_report: str = None):
+        """Save swap data to database with specific fields"""
+        if not swap_data:
+            return
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Create a set to track unique combinations
+        seen_records = set()
+        
+        for data in swap_data:
+            # Create a unique key for this record
+            unique_key = (
+                data.get('ticker'),
+                filing_date,
+                data.get('counterparty_name'),
+                data.get('notional_amt'),
+                data.get('floating_rt_spread')
+            )
+            
+            # Skip if we've seen this combination before
+            if unique_key in seen_records:
+                continue
+                
+            seen_records.add(unique_key)
+            
+            try:
+                cursor.execute('''
+                    INSERT OR IGNORE INTO swap_data 
+                    (ticker, filing_date, report_date, index_name, index_identifier,
+                     counterparty_name, fixed_or_floating, floating_rt_index, 
+                     floating_rt_spread, notional_amt, filing_url)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    data.get('ticker'),
+                    filing_date,
+                    data.get('period_of_report') or period_of_report or filing_date,
+                    data.get('index_name'),
+                    data.get('index_identifier'),
+                    data.get('counterparty_name'),
+                    data.get('fixed_or_floating'),
+                    data.get('floating_rt_index'),
+                    data.get('floating_rt_spread'),
+                    data.get('notional_amt'),
+                    data.get('filing_url')
+                ))
+            except sqlite3.Error as e:
+                logger.error(f"Database error: {e}")
+        
+        conn.commit()
+        conn.close()
+    
+    def get_ticker_data_specific(self, ticker: str) -> List[Dict]:
+        """Retrieve all stored data for a specific ticker with your required fields"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT filing_date, report_date as period_of_report, index_name, index_identifier,
+                   counterparty_name, fixed_or_floating, floating_rt_index, 
+                   floating_rt_spread, notional_amt
+            FROM swap_data 
+            WHERE ticker = ? 
+            ORDER BY filing_date DESC
+        ''', (ticker,))
+        
+        columns = [description[0] for description in cursor.description]
+        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        
+        conn.close()
+        return results
+    
+    def get_historical_filings(self, cik: str, start_date: str = None, end_date: str = None) -> List[Dict]:
+        """Get historical N-PORT filings for a given CIK using the correct SEC endpoint"""
+        if not start_date:
+            start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+        if not end_date:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+        
+        # Convert dates to SEC format
+        start_date_dt = parse(start_date)
+        end_date_dt = parse(end_date)
+        
+        # SEC submissions endpoint for all filings
+        url = f"https://data.sec.gov/submissions/CIK{cik.zfill(10)}.json"
+        
+        try:
+            response = requests.get(url, headers=self.headers)
+            if response.status_code != 200:
+                logger.error(f"Error fetching filings: {response.status_code}")
+                return []
+                
+            data = response.json()
+            nport_filings = []
+            
+            # Process recent filings
+            recent = data.get('filings', {}).get('recent', {})
+            if recent:
+                forms = recent.get('form', [])
+                accession_numbers = recent.get('accessionNumber', [])
+                filing_dates = recent.get('filingDate', [])
+                
+                for i, form in enumerate(forms):
+                    if form == 'NPORT-P':
+                        filing_date = filing_dates[i]
+                        filing_dt = parse(filing_date)
+                        if start_date_dt <= filing_dt <= end_date_dt:
+                            acc_no = accession_numbers[i].replace('-', '')
+                            xml_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/primary_doc.xml"
+                            nport_filings.append({
+                                'filing_date': filing_date,
+                                'filing_url': xml_url
+                            })
+            
+            # Process older filings
+            files = data.get('filings', {}).get('files', [])
+            for file_info in files:
+                if file_info.get('form') == 'NPORT-P':
+                    filing_date = file_info.get('filingDate')
+                    if filing_date:
+                        filing_dt = parse(filing_date)
+                        if start_date_dt <= filing_dt <= end_date_dt:
+                            acc_no = file_info.get('accessionNumber', '').replace('-', '')
+                            if acc_no:
+                                xml_url = f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{acc_no}/primary_doc.xml"
+                                nport_filings.append({
+                                    'filing_date': filing_date,
+                                    'filing_url': xml_url
+                                })
+            
+            # Sort filings by date
+            nport_filings.sort(key=lambda x: x['filing_date'], reverse=True)
+            return nport_filings
+            
+        except Exception as e:
+            logger.error(f"Error fetching historical filings: {e}")
+            return []
+    
+    def process_ticker(self, ticker: str, cik: str, start_date: str = None, end_date: str = None, series_id: str = None):
+        """Process a single ticker and extract swap data"""
+        # Clear existing data for this ticker
+        self.clear_ticker_data(ticker)
+        
+        # Get historical filings
+        filings = self.get_historical_filings(cik, start_date, end_date)
+        
+        for filing in filings:
+            try:
+                # Process each filing
+                self.process_ticker_xml(ticker, filing['filing_url'], filing['filing_date'], series_id)
+                time.sleep(0.1)  # Rate limiting
+            except Exception as e:
+                logger.error(f"Error processing filing for {ticker}: {e}")
+                continue
+
+    def export_to_csv(self, output_file: str = "etf_swap_data.csv", ticker: str = None):
+        """Export swap data to CSV - if ticker is specified, only export that ticker's data"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        if ticker:
+            # Export only the specified ticker's data
+            cursor.execute('''
+                SELECT ticker, filing_date, report_date as period_of_report, index_name, index_identifier,
+                       counterparty_name, fixed_or_floating, floating_rt_index, floating_rt_spread, notional_amt, filing_url, extracted_date
+                FROM swap_data
+                WHERE ticker = ?
+                ORDER BY filing_date DESC
+            ''', (ticker,))
+        else:
+            # Export all data
+            cursor.execute('''
+                SELECT ticker, filing_date, report_date as period_of_report, index_name, index_identifier,
+                       counterparty_name, fixed_or_floating, floating_rt_index, floating_rt_spread, notional_amt, filing_url, extracted_date
+                FROM swap_data
+                ORDER BY filing_date DESC
+            ''')
+        
+        rows = cursor.fetchall()
+        columns = [description[0] for description in cursor.description]
+        df = pd.DataFrame(rows, columns=columns)
+        df.to_csv(output_file, index=False)
+        conn.close()
+
+    def import_tickers_from_csv(self, csv_path: str):
+        """Import ticker mappings from a CSV file
+        
+        Supports either:
+        - ticker,cik,series_id,company_name,start_date
+        - CIK,Series,Name,Ticker
+        """
+        try:
+            # Read the CSV file
+            df = pd.read_csv(csv_path)
+            
+            # Detect and map columns if using alternate header
+            if set(['CIK', 'Series', 'Name', 'Ticker']).issubset(df.columns):
+                df = df.rename(columns={
+                    'CIK': 'cik',
+                    'Series': 'series_id',
+                    'Name': 'company_name',
+                    'Ticker': 'ticker'
+                })
+            
+            # Validate required columns
+            required_columns = ['ticker', 'cik', 'series_id']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                raise ValueError(f"Missing required columns: {', '.join(missing_columns)}")
+            
+            # Add optional columns if not present
+            if 'company_name' not in df.columns:
+                df['company_name'] = None
+            if 'start_date' not in df.columns:
+                df['start_date'] = '2022-01-01'
+            
+            # Connect to database
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            # Insert each row
+            for _, row in df.iterrows():
+                cursor.execute('''
+                    INSERT OR REPLACE INTO ticker_mappings 
+                    (ticker, cik, company_name, series_id, start_date)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    str(row['ticker']).upper(),
+                    str(row['cik']).zfill(10),  # Ensure CIK is 10 digits
+                    row['company_name'],
+                    row['series_id'],
+                    row['start_date']
+                ))
+                print(f"Added {str(row['ticker']).upper()} to database")
+            
+            conn.commit()
+            conn.close()
+            print(f"\nSuccessfully imported {len(df)} tickers from {csv_path}")
+            
+        except Exception as e:
+            print(f"Error importing tickers from CSV: {str(e)}")
+
+    def clear_ticker_data(self, ticker: str):
+        """Clear all swap data for a specific ticker from the database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM swap_data WHERE ticker = ?', (ticker,))
+        conn.commit()
+        conn.close()
+        print(f"Cleared existing data for {ticker}")
+
+    def extract_swap_data(self, xml_content: str, filing_date: str, filing_url: str) -> List[Dict]:
+        """Extract swap data from XML content"""
+        try:
+            # Parse XML content
+            root = ET.fromstring(xml_content)
+            
+            # Define namespace map
+            namespaces = {
+                'ns': 'http://www.sec.gov/edgar/nport',
+                'xsi': 'http://www.w3.org/2001/XMLSchema-instance'
+            }
+            
+            # Extract period_of_report from <repPdEndDt>
+            period_of_report = None
+            try:
+                period_elem = root.find('.//ns:repPdEndDt', namespaces)
+                if period_elem is not None and period_elem.text:
+                    period_of_report = period_elem.text.strip()
+            except Exception as e:
+                logger.error(f"Error extracting period_of_report: {e}")
+            
+            # Extract index information from varInfo section
+            var_section = root.find('.//ns:varInfo', namespaces)
+            index_name = None
+            index_identifier = None
+            
+            if var_section is not None:
+                # Find designated index name - try multiple paths
+                index_name_elem = var_section.find('.//ns:nameDesignatedIndex', namespaces)
+                if index_name_elem is None:
+                    index_name_elem = var_section.find('.//nameDesignatedIndex')
+                if index_name_elem is not None:
+                    index_name = index_name_elem.text.strip()
+                
+                # Find index identifier - try multiple paths
+                index_id_elem = var_section.find('.//ns:indexIdentifier', namespaces)
+                if index_id_elem is None:
+                    index_id_elem = var_section.find('.//indexIdentifier')
+                if index_id_elem is not None:
+                    index_identifier = index_id_elem.text.strip()
+            
+            # Find all swap positions
+            swap_positions = root.findall('.//ns:swpPos', namespaces)
+            
+            swap_data = []
+            for position in swap_positions:
+                try:
+                    # Extract required fields
+                    notional_amt = position.find('ns:notionalAmt', namespaces)
+                    notional_amt = float(notional_amt.text) if notional_amt is not None else None
+                    
+                    # Extract counterparty information
+                    counterparty = position.find('ns:ctrPty', namespaces)
+                    counterparty_name = counterparty.find('ns:ctrPtyNm', namespaces).text if counterparty is not None else None
+                    
+                    # Extract floating rate information
+                    floating_rate = position.find('ns:fltgRt', namespaces)
+                    floating_rt_index = floating_rate.find('ns:fltgRtIdx', namespaces).text if floating_rate is not None else None
+                    floating_rt_spread = floating_rate.find('ns:fltgRtSprd', namespaces)
+                    floating_rt_spread = float(floating_rt_spread.text) if floating_rt_spread is not None else None
+                    
+                    # Determine if fixed or floating
+                    fixed_or_floating = "Floating" if floating_rate is not None else "Fixed"
+                    
+                    swap_data.append({
+                        'filing_date': filing_date,
+                        'period_of_report': period_of_report,
+                        'index_name': index_name,
+                        'index_identifier': index_identifier,
+                        'counterparty_name': counterparty_name,
+                        'fixed_or_floating': fixed_or_floating,
+                        'floating_rt_index': floating_rt_index,
+                        'floating_rt_spread': floating_rt_spread,
+                        'notional_amt': notional_amt,
+                        'filing_url': filing_url
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing swap position: {str(e)}")
+                    continue
+            
+            return swap_data
+            
+        except Exception as e:
+            logger.error(f"Error extracting swap data: {str(e)}")
+            return []
+
+def main():
+    """Main function to process a single ticker and export results"""
+    # Initialize the extractor
+    extractor = ETFSwapDataExtractor()
+    
+    # Get ticker from command line argument
+    import sys
+    if len(sys.argv) > 1:
+        ticker = sys.argv[1].upper()
+    else:
+        ticker = input("Enter ticker symbol (e.g., TSLL): ").upper()
+    
+    # Get ticker mapping from database
+    ticker_data = extractor.get_ticker_mapping(ticker)
+    
+    if not ticker_data:
+        print(f"Error: {ticker} is not supported. Please add it using add_ticker_mapping()")
+        return
+    
+    # Default end date is today
+    end_date = datetime.now().strftime("%Y-%m-%d")
+    
+    # Process the ticker
+    print(f"\nProcessing {ticker}...")
+    start_date = ticker_data.get('start_date', '2019-01-01')
+    extractor.process_ticker(ticker, ticker_data['cik'], start_date, end_date, ticker_data['series_id'])
+    
+    # Export to CSV
+    output_file = f"{ticker.lower()}_swap_data.csv"
+    extractor.export_to_csv(output_file, ticker)
+    print(f"\nData exported to {output_file}")
+
+if __name__ == "__main__":
+    main()

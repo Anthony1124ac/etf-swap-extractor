@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8"?><edgarSubmission xmlns="http://www.sec.gov/edgar/nport" xmlns:com="http://www.sec.gov/edgar/common" xmlns:ncom="http://www.sec.gov/edgar/nportcommon" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <headerData>
+    <submissionType>NPORT-P</submissionType>
+    <isConfidential>false</isConfidential>
+    <filerInfo>
+
+      <filer>
+        <issuerCredentials>
+          <cik>0001424958</cik>
+          <ccc>XXXXXXXX</ccc>
+        </issuerCredentials>
+      </filer>
+
+
+      <seriesClassInfo>
+        <seriesId>S000029346</seriesId>
+        <classId>C000090189</classId>
+      </seriesClassInfo>
+
+
+    </filerInfo>
+  </headerData>
+  <formData>
+    <genInfo>
+      <regName>Direxion Shares ETF Trust</regName>
+      <regFileNumber>811-22201</regFileNumber>
+      <regCik>0001424958</regCik>
+      <regLei>549300M501IVJM50FG12</regLei>
+      <regStreet1>1301 Avenue of the Americas (6th Avenue)</regStreet1>
+      <regStreet2>28th Floor</regStreet2>
+      <regCity>New York</regCity>
+      <regStateConditional regCountry="US" regState="US-NY"/>
+      <regZipOrPostalCode>10019</regZipOrPostalCode>
+      <regPhone>646-572-3390</regPhone>
+      <seriesName>Direxion Daily MSCI Brazil Bull 2X Shares</seriesName>
+      <seriesId>S000029346</seriesId>
+      <seriesLei>549300T02YU3KFGO6S08</seriesLei>
+      <repPdEnd>2024-10-31</repPdEnd>
+      <repPdDate>2024-07-31</repPdDate>
+      <isFinalFiling>N</isFinalFiling>
+    </genInfo>
+    <fundInfo>
+      <totAssets>105431735.030000000000</totAssets>
+      <totLiabs>112898.660000000000</totLiabs>
+      <netAssets>105318836.370000000000</netAssets>
+      <assetsAttrMiscSec>0.000000000000</assetsAttrMiscSec>
+      <assetsInvested>0.000000000000</assetsInvested>
+      <amtPayOneYrBanksBorr>0.000000000000</amtPayOneYrBanksBorr>
+      <amtPayOneYrCtrldComp>0.000000000000</amtPayOneYrCtrldComp>
+      <amtPayOneYrOthAffil>0.000000000000</amtPayOneYrOthAffil>
+      <amtPayOneYrOther>0.000000000000</amtPayOneYrOther>
+      <amtPayAftOneYrBanksBorr>0.000000000000</amtPayAftOneYrBanksBorr>
+      <amtPayAftOneYrCtrldComp>0.000000000000</amtPayAftOneYrCtrldComp>
+      <amtPayAftOneYrOthAffil>0.000000000000</amtPayAftOneYrOthAffil>
+      <amtPayAftOneYrOther>0.000000000000</amtPayAftOneYrOther>
+      <delayDeliv>0.000000000000</delayDeliv>
+      <standByCommit>0.000000000000</standByCommit>
+      <liquidPref>0.000000000000</liquidPref>
+      <cshNotRptdInCorD>0.000000000000</cshNotRptdInCorD>
+      <isNonCashCollateral>N</isNonCashCollateral>
+      <returnInfo>
+        <monthlyTotReturns>
+          <monthlyTotReturn classId="C000090189" rtn1="-9.7653604" rtn2="-9.9091192" rtn3="2.30358"/>
+        </monthlyTotReturns>
+        <monthlyReturnCats>
+          <commodityContracts>
+            <mon1 netRealizedGain="N/A" netUnrealizedAppr="N/A"/>
+            <mon2 netRealizedGain="N/A" netUnrealizedAppr="N/A"/>
+            <mon3 netRealizedGain="N/A" netUnrealizedAppr="N/A"/>
+            <futureCategory>
+              <instrMon1 netRealizedGain="N/A" netUnrealizedAppr="N/A"/>
+              <instrMon2 netRealizedGain="N/A" netUnrealizedAppr="N/A"/>
+              <instrMon3 netRealizedGain="N/A" netUnrealizedAppr="N/A"/>
+            </futureCategory>
+          </commodityContracts>
+          <equityContracts>
+            <mon1 netRealizedGain="-1340796.81" netUnrealizedAppr="-5685509.82"/>
+            <mon2 netRealizedGain="-1524583.06" netUnrealizedAppr="-9857160.22"/>
+            <mon3 netRealizedGain="-3654385.7" netUnrealizedAppr="5668167.93"/>
+            <swapCategory>
+              <instrMon1 netRealizedGain="-1340796.81" netUnrealizedAppr="-5685509.82"/>
+              <instrMon2 netRealizedGain="-1524583.06" netUnrealizedAppr="-9857160.22"/>
+              <instrMon3 netRealizedGain="-3654385.7" netUnrealizedAppr="5668167.93"/>
+            </swapCategory>
+          </equityContracts>
+        </monthlyReturnCats>
+        <othMon1 netRealizedGain="0" netUnrealizedAppr="0"/>
+        <othMon2 netRealizedGain="-3674974.27" netUnrealizedAppr="-551343.74"/>
+        <othMon3 netRealizedGain="0" netUnrealizedAppr="0"/>
+      </returnInfo>
+      <mon1Flow redemption="0" reinvestment="0" sales="0"/>
+      <mon2Flow redemption="0" reinvestment="0" sales="26691024.6"/>
+      <mon3Flow redemption="6779506.77" reinvestment="0" sales="6534023.43"/>
+
+
+      <varInfo>
+
+        <fundsDesignatedInfo>
+          <nameDesignatedIndex>MSCI Brazil 25-50 NETR USD Index Index</nameDesignatedIndex>
+          <indexIdentifier>MSCIBZ2050_USDIDX</indexIdentifier>
+
+        </fundsDesignatedInfo>
+
+      </varInfo>
+    </fundInfo>
+    <invstOrSecs>
+      <invstOrSec>
+        <name>ISHARES MSCI SPAIN CAPPED ET</name>
+        <lei>F6BK0XM2JFWYXJ2MDK09</lei>
+        <title>ISHARES MSCI BRAZIL ETF</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <isin value="US4642864007"/>
+          <ticker value="EWZ"/>
+        </identifiers>
+        <balance>1801089.00</balance>
+        <units>NS</units>
+        <curCd>USD</curCd>
+        <valUSD>50016241.53</valUSD>
+        <pctVal>47.4903096672</pctVal>
+        <payoffProfile>Long</payoffProfile>
+        <assetCat>EC</assetCat>
+        <issuerCat>RF</issuerCat>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>1</fairValLevel>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>N/A</name>
+        <lei>N/A</lei>
+        <title>ISHARES MSCI BRAZIL CAPPED ETF SWAP</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="EWZBC"/>
+        </identifiers>
+        <balance>1</balance>
+        <units>NC</units>
+        <curCd>USD</curCd>
+        <valUSD>-108468.07</valUSD>
+        <pctVal>-0.1029901903</pctVal>
+        <payoffProfile>N/A</payoffProfile>
+        <assetCat>DE</assetCat>
+        <issuerConditional desc="Other - Swap" issuerCat="OTHER"/>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>2</fairValLevel>
+        <derivativeInfo>
+          <swapDeriv derivCat="SWP">
+            <counterparties>
+              <counterpartyName>Barclays Bank PLC</counterpartyName>
+              <counterpartyLei>G5GSEF7VJP5I7OUK5573</counterpartyLei>
+            </counterparties>
+            <descRefInstrmnt>
+              <indexBasketInfo>
+                <indexName>N/A</indexName>
+                <indexIdentifier>EWZ</indexIdentifier>
+              </indexBasketInfo>
+            </descRefInstrmnt>
+            <swapFlag>Y</swapFlag>
+            <floatingRecDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="Total Return Swap Contract of iShares MSCI Brazil Capped ETF" floatingRtSpread="0.000000000000" pmntAmt="0.000000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingRecDesc>
+            <floatingPmntDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="1 month Sofr + spread" floatingRtSpread="6.080000000000" pmntAmt="6.080000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingPmntDesc>
+            <terminationDt>2049-12-31</terminationDt>
+            <upfrontPmnt>0.000000000000</upfrontPmnt>
+            <pmntCurCd>USD</pmntCurCd>
+            <upfrontRcpt>0.000000000000</upfrontRcpt>
+            <rcptCurCd>USD</rcptCurCd>
+            <notionalAmt>733100.23</notionalAmt>
+            <curCd>USD</curCd>
+            <unrealizedAppr>-108468.07</unrealizedAppr>
+          </swapDeriv>
+        </derivativeInfo>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>N/A</name>
+        <lei>N/A</lei>
+        <title>ISHARES MSCI BRAZIL CAPPED ETF SWAP</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="EWZBP"/>
+        </identifiers>
+        <balance>1</balance>
+        <units>NC</units>
+        <curCd>USD</curCd>
+        <valUSD>-55576.76</valUSD>
+        <pctVal>-0.0527700095</pctVal>
+        <payoffProfile>N/A</payoffProfile>
+        <assetCat>DE</assetCat>
+        <issuerConditional desc="Other - Swap" issuerCat="OTHER"/>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>2</fairValLevel>
+        <derivativeInfo>
+          <swapDeriv derivCat="SWP">
+            <counterparties>
+              <counterpartyName>BNP Paribas</counterpartyName>
+              <counterpartyLei>R0MUWSFPU8MPRO8K5P83</counterpartyLei>
+            </counterparties>
+            <descRefInstrmnt>
+              <indexBasketInfo>
+                <indexName>N/A</indexName>
+                <indexIdentifier>EWZ</indexIdentifier>
+              </indexBasketInfo>
+            </descRefInstrmnt>
+            <swapFlag>Y</swapFlag>
+            <floatingRecDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="Total Return Swap Contract of iShares MSCI Brazil Capped ETF" floatingRtSpread="0.000000000000" pmntAmt="0.000000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingRecDesc>
+            <floatingPmntDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="1 month Sofr + spread" floatingRtSpread="5.920000000000" pmntAmt="5.920000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingPmntDesc>
+            <terminationDt>2049-12-31</terminationDt>
+            <upfrontPmnt>0.000000000000</upfrontPmnt>
+            <pmntCurCd>USD</pmntCurCd>
+            <upfrontRcpt>0.000000000000</upfrontRcpt>
+            <rcptCurCd>USD</rcptCurCd>
+            <notionalAmt>2091719.71</notionalAmt>
+            <curCd>USD</curCd>
+            <unrealizedAppr>-55576.76</unrealizedAppr>
+          </swapDeriv>
+        </derivativeInfo>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>N/A</name>
+        <lei>N/A</lei>
+        <title>ISHARES MSCI BRAZIL CAPPED ETF SWAP</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="EWZJP"/>
+        </identifiers>
+        <balance>1</balance>
+        <units>NC</units>
+        <curCd>USD</curCd>
+        <valUSD>-14682324.72</valUSD>
+        <pctVal>-13.9408345421</pctVal>
+        <payoffProfile>N/A</payoffProfile>
+        <assetCat>DE</assetCat>
+        <issuerConditional desc="Other - Swap" issuerCat="OTHER"/>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>2</fairValLevel>
+        <derivativeInfo>
+          <swapDeriv derivCat="SWP">
+            <counterparties>
+              <counterpartyName>J.P. MORGAN SECURITIES LLC.</counterpartyName>
+              <counterpartyLei>ZBUT11V806EZRVTWT807</counterpartyLei>
+            </counterparties>
+            <descRefInstrmnt>
+              <indexBasketInfo>
+                <indexName>N/A</indexName>
+                <indexIdentifier>EWZ</indexIdentifier>
+              </indexBasketInfo>
+            </descRefInstrmnt>
+            <swapFlag>Y</swapFlag>
+            <floatingRecDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="Total Return Swap Contract of iShares MSCI Brazil Capped ETF" floatingRtSpread="0.000000000000" pmntAmt="0.000000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingRecDesc>
+            <floatingPmntDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="1 month Sofr + spread" floatingRtSpread="5.630000000000" pmntAmt="5.630000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingPmntDesc>
+            <terminationDt>2049-12-31</terminationDt>
+            <upfrontPmnt>0.000000000000</upfrontPmnt>
+            <pmntCurCd>USD</pmntCurCd>
+            <upfrontRcpt>0.000000000000</upfrontRcpt>
+            <rcptCurCd>USD</rcptCurCd>
+            <notionalAmt>136431927.25</notionalAmt>
+            <curCd>USD</curCd>
+            <unrealizedAppr>-14682324.72</unrealizedAppr>
+          </swapDeriv>
+        </derivativeInfo>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>N/A</name>
+        <lei>N/A</lei>
+        <title>ISHARES MSCI BRAZIL CAPPED ETF SWAP</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="EWZU"/>
+        </identifiers>
+        <balance>1</balance>
+        <units>NC</units>
+        <curCd>USD</curCd>
+        <valUSD>-1565643.95</valUSD>
+        <pctVal>-1.4865754351</pctVal>
+        <payoffProfile>N/A</payoffProfile>
+        <assetCat>DE</assetCat>
+        <issuerConditional desc="Other - Swap" issuerCat="OTHER"/>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>2</fairValLevel>
+        <derivativeInfo>
+          <swapDeriv derivCat="SWP">
+            <counterparties>
+              <counterpartyName>UBS AG</counterpartyName>
+              <counterpartyLei>BFM8T61CT2L1QCEMIK50</counterpartyLei>
+            </counterparties>
+            <descRefInstrmnt>
+              <indexBasketInfo>
+                <indexName>N/A</indexName>
+                <indexIdentifier>EWZ</indexIdentifier>
+              </indexBasketInfo>
+            </descRefInstrmnt>
+            <swapFlag>Y</swapFlag>
+            <floatingRecDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="Total Return Swap Contract of iShares MSCI Brazil Capped ETF" floatingRtSpread="0.000000000000" pmntAmt="0.000000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingRecDesc>
+            <floatingPmntDesc curCd="USD" fixedOrFloating="Floating" floatingRtIndex="1 month Sofr + spread" floatingRtSpread="5.630000000000" pmntAmt="5.630000000000">
+              <rtResetTenors>
+                <rtResetTenor rateTenor="Day" rateTenorUnit="1" resetDt="Day" resetDtUnit="1"/>
+              </rtResetTenors>
+            </floatingPmntDesc>
+            <terminationDt>2049-12-31</terminationDt>
+            <upfrontPmnt>0.000000000000</upfrontPmnt>
+            <pmntCurCd>USD</pmntCurCd>
+            <upfrontRcpt>0.000000000000</upfrontRcpt>
+            <rcptCurCd>USD</rcptCurCd>
+            <notionalAmt>20199064.90</notionalAmt>
+            <curCd>USD</curCd>
+            <unrealizedAppr>-1565643.95</unrealizedAppr>
+          </swapDeriv>
+        </derivativeInfo>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>DREYFUS GOVERNMENT CASH MANAGE</name>
+        <lei>N/A</lei>
+        <title>DREYFUS GOV'T CASH MGMT -INSTITUTIONAL CUSIP 262006208 DGCXX (#289)</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="996086609"/>
+        </identifiers>
+        <balance>30105822.75</balance>
+        <units>PA</units>
+        <curCd>USD</curCd>
+        <valUSD>30105822.75</valUSD>
+        <pctVal>28.5854114873</pctVal>
+        <payoffProfile>Long</payoffProfile>
+        <assetCat>STIV</assetCat>
+        <issuerCat>RF</issuerCat>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>1</fairValLevel>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>GOLDMAN FINANCIAL</name>
+        <lei>549300DAH6N80PM31E83</lei>
+        <title>GOLDMAN FINL SQ TRSRY INST 506</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="S9999349"/>
+        </identifiers>
+        <balance>41119564.89</balance>
+        <units>PA</units>
+        <curCd>USD</curCd>
+        <valUSD>41119564.89</valUSD>
+        <pctVal>39.0429350601</pctVal>
+        <payoffProfile>Long</payoffProfile>
+        <assetCat>STIV</assetCat>
+        <issuerCat>RF</issuerCat>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>1</fairValLevel>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+      <invstOrSec>
+        <name>GOLDMAN SACHS LIQ ES FD A</name>
+        <lei>N/A</lei>
+        <title>GOLDMAN SACHS FIN GOV 465 INSTITUT</title>
+        <cusip>N/A</cusip>
+        <identifiers>
+          <other otherDesc="Internal ID" value="X9USDGLDS"/>
+        </identifiers>
+        <balance>290287.48</balance>
+        <units>PA</units>
+        <curCd>USD</curCd>
+        <valUSD>290287.48</valUSD>
+        <pctVal>0.2756273142</pctVal>
+        <payoffProfile>Long</payoffProfile>
+        <assetCat>STIV</assetCat>
+        <issuerCat>RF</issuerCat>
+        <invCountry>US</invCountry>
+        <isRestrictedSec>N</isRestrictedSec>
+
+        <fairValLevel>1</fairValLevel>
+        <securityLending>
+          <isCashCollateral>N</isCashCollateral>
+          <isNonCashCollateral>N</isNonCashCollateral>
+          <isLoanByFund>N</isLoanByFund>
+        </securityLending>
+      </invstOrSec>
+    </invstOrSecs>
+    <signature>
+      <ncom:dateSigned>2024-09-27</ncom:dateSigned>
+      <ncom:nameOfApplicant>Direxion Shares ETF Trust</ncom:nameOfApplicant>
+      <ncom:signature>Patrick Rudnick</ncom:signature>
+      <ncom:signerName>Patrick Rudnick</ncom:signerName>
+      <ncom:title>Principal Executive Officer</ncom:title>
+    </signature>
+  </formData>
+  <documents>XXXX</documents>
+</edgarSubmission>
