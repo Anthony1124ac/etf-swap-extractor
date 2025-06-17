@@ -22,8 +22,11 @@ app.logger.setLevel(logging.INFO)
 app.logger.info('ETF Swap Extractor startup')
 
 # Load ticker mappings from CSV
-ticker_mappings = pd.read_csv('etf_ticker_cik_series_6_16_25.csv')
+csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'etf_ticker_cik_series_6_16_25.csv')
+app.logger.info(f'Loading ticker mappings from: {csv_path}')
+ticker_mappings = pd.read_csv(csv_path)
 ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
+app.logger.info(f'Loaded {len(ticker_to_cik)} ticker mappings')
 
 @app.route('/', methods=['GET'])
 def home():
