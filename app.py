@@ -54,6 +54,7 @@ try:
     # Convert CIK numbers to 10-digit strings with leading zeros
     ticker_mappings['CIK'] = ticker_mappings['CIK'].astype(str).str.zfill(10)
     ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
+    ticker_to_series = dict(zip(ticker_mappings['Ticker'], ticker_mappings['Series']))
     app.logger.info(f'Successfully loaded {len(ticker_to_cik)} ticker mappings')
 except Exception as e:
     app.logger.error(f'Error loading CSV file: {str(e)}')
@@ -74,13 +75,14 @@ def process_ticker():
     try:
         app.logger.info(f'Processing request for ticker: {ticker}')
         
-        # Look up CIK in the ticker mappings
+        # Look up CIK and series ID in the ticker mappings
         if ticker not in ticker_to_cik:
             flash(f'No CIK found for ticker {ticker}. Please make sure the ticker is in the database.')
             return render_template('index.html')
         
         cik = ticker_to_cik[ticker]
-        app.logger.info(f'Found CIK {cik} for ticker {ticker}')
+        series_id = ticker_to_series[ticker]
+        app.logger.info(f'Found CIK {cik} and series ID {series_id} for ticker {ticker}')
         
         # Create a temporary directory for the database and CSV
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -89,8 +91,8 @@ def process_ticker():
             # Initialize the extractor with the temporary database
             extractor = ETFSwapDataExtractor(db_path=db_path)
             
-            # Process the ticker
-            extractor.process_ticker(ticker, cik)
+            # Process the ticker with both CIK and series ID
+            extractor.process_ticker(ticker, cik, series_id=series_id)
             
             # Export to CSV
             csv_path = os.path.join(temp_dir, f'{ticker.lower()}_swap_data.csv')
