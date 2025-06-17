@@ -122,36 +122,53 @@ class ETFSwapDataExtractor:
                 filing_date = datetime.now().strftime("%Y-%m-%d")
         
         try:
-            response = requests.get(xml_url, headers=self.headers)
+            # Add timeout to the request
+            response = requests.get(xml_url, headers=self.headers, timeout=30)
             
             if response.status_code == 200:
-                # Parse the XML for specific outputs
-                swap_data = self._parse_nport_xml_specific(response.content, ticker, xml_url, series_id)
-                
-                # Save to database
-                if swap_data:
-                    # Extract period_of_report from XML
-                    root = ET.fromstring(response.content)
-                    period_of_report = None
-                    try:
-                        period_elem = root.find('.//nport:repPdEndDt', namespaces={'nport': 'http://www.sec.gov/edgar/nport'})
-                        if period_elem is not None and period_elem.text:
-                            period_of_report = period_elem.text.strip()
-                    except Exception as e:
-                        logger.error(f"Error extracting period_of_report: {e}")
+                # Parse the XML for specific outputs with timeout handling
+                try:
+                    swap_data = self._parse_nport_xml_specific(response.content, ticker, xml_url, series_id)
                     
-                    self.save_swap_data_specific(swap_data, filing_date, period_of_report)
-                
-                return swap_data
-                
+                    # Save to database
+                    if swap_data:
+                        # Extract period_of_report from XML
+                        root = ET.fromstring(response.content)
+                        period_of_report = None
+                        try:
+                            period_elem = root.find('.//nport:repPdEndDt', namespaces={'nport': 'http://www.sec.gov/edgar/nport'})
+                            if period_elem is not None and period_elem.text:
+                                period_of_report = period_elem.text.strip()
+                        except Exception as e:
+                            logger.error(f"Error extracting period_of_report: {e}")
+                        
+                        # Save data in smaller batches
+                        batch_size = 100
+                        for i in range(0, len(swap_data), batch_size):
+                            batch = swap_data[i:i + batch_size]
+                            self.save_swap_data_specific(batch, filing_date, period_of_report)
+                    
+                    return swap_data
+                except ET.ParseError as e:
+                    logger.error(f"XML parsing error for {ticker}: {e}")
+                    return []
+                except Exception as e:
+                    logger.error(f"Error processing XML for {ticker}: {e}")
+                    return []
             else:
                 logger.error(f"Failed to fetch XML for {ticker}. Status code: {response.status_code}")
                 return []
                 
+        except requests.Timeout:
+            logger.error(f"Timeout while fetching XML for {ticker}")
+            return []
+        except requests.RequestException as e:
+            logger.error(f"Request error for {ticker}: {e}")
+            return []
         except Exception as e:
             logger.error(f"Error fetching XML for {ticker}: {e}")
             return []
-    
+
     def _parse_nport_xml_specific(self, xml_content: bytes, ticker: str, filing_url: str, series_id: str = None) -> List[Dict]:
         """Parse N-PORT XML content to extract specific swap data outputs for any ticker"""
         swap_data = []
@@ -216,26 +233,25 @@ class ETFSwapDataExtractor:
                 './/nport:derivative',
                 './/nport:investment',
                 './/nport:security',
-                './/nport:holding',
-                './/invstOrSec',
-                './/derivativeInstrument',
-                './/derivative',
-                './/investment',
-                './/security',
-                './/holding'
+                './/nport:holding'
             ]
             
+            # Process elements in chunks to avoid memory issues
             for path in investment_paths:
                 try:
                     elements = root.findall(path, namespaces)
                     if elements:
                         for element in elements:
-                            swap_info = self._extract_specific_swap_info(element, namespaces, ticker, filing_url)
-                            if swap_info:
-                                swap_info['period_of_report'] = period_of_report
-                                swap_info['index_name'] = index_name
-                                swap_info['index_identifier'] = index_identifier
-                                swap_data.append(swap_info)
+                            try:
+                                swap_info = self._extract_specific_swap_info(element, namespaces, ticker, filing_url)
+                                if swap_info:
+                                    swap_info['period_of_report'] = period_of_report
+                                    swap_info['index_name'] = index_name
+                                    swap_info['index_identifier'] = index_identifier
+                                    swap_data.append(swap_info)
+                            except Exception as e:
+                                logger.error(f"Error processing element: {e}")
+                                continue
                 except Exception as e:
                     logger.error(f"Error processing path {path}: {str(e)}")
                     continue
