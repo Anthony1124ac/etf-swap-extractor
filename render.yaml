@@ -3,11 +3,11 @@ services:
     name: etf-swap-extractor-v2
     env: python
     buildCommand: |
-      python3.9 -m pip install --upgrade pip setuptools wheel
-      python3.9 -m pip install -r requirements.txt
+      python3.11 -m pip install --upgrade pip setuptools wheel
+      python3.11 -m pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.18
+        value: 3.11.7
       - key: SECRET_KEY
         value: 09958de0a84e481cb19e3c4c282bb531ea7d3dea3e519840bbb780ee38d2adb8 
