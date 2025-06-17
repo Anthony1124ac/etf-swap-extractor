@@ -5,6 +5,7 @@ import tempfile
 import logging
 from logging.handlers import RotatingFileHandler
 import pandas as pd
+import sys
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -21,12 +22,27 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.info('ETF Swap Extractor startup')
 
+# Print current directory and list files for debugging
+app.logger.info(f'Current directory: {os.getcwd()}')
+app.logger.info('Files in current directory:')
+for file in os.listdir('.'):
+    app.logger.info(f'  {file}')
+
 # Load ticker mappings from CSV
 csv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'etf_ticker_cik_series_6_16_25.csv')
 app.logger.info(f'Loading ticker mappings from: {csv_path}')
-ticker_mappings = pd.read_csv(csv_path)
-ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
-app.logger.info(f'Loaded {len(ticker_to_cik)} ticker mappings')
+
+if not os.path.exists(csv_path):
+    app.logger.error(f'CSV file not found at: {csv_path}')
+    sys.exit(1)
+
+try:
+    ticker_mappings = pd.read_csv(csv_path)
+    ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
+    app.logger.info(f'Successfully loaded {len(ticker_to_cik)} ticker mappings')
+except Exception as e:
+    app.logger.error(f'Error loading CSV file: {str(e)}')
+    sys.exit(1)
 
 @app.route('/', methods=['GET'])
 def home():
