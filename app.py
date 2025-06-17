@@ -4,6 +4,7 @@ import os
 import tempfile
 import logging
 from logging.handlers import RotatingFileHandler
+import pandas as pd
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -20,6 +21,10 @@ app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 app.logger.info('ETF Swap Extractor startup')
 
+# Load ticker mappings from CSV
+ticker_mappings = pd.read_csv('etf_ticker_cik_series_6_16_25.csv')
+ticker_to_cik = dict(zip(ticker_mappings['Ticker'], ticker_mappings['CIK']))
+
 @app.route('/', methods=['GET'])
 def home():
     return render_template('index.html')
@@ -35,21 +40,20 @@ def process_ticker():
     try:
         app.logger.info(f'Processing request for ticker: {ticker}')
         
+        # Look up CIK in the ticker mappings
+        if ticker not in ticker_to_cik:
+            flash(f'No CIK found for ticker {ticker}. Please make sure the ticker is in the database.')
+            return render_template('index.html')
+        
+        cik = ticker_to_cik[ticker]
+        app.logger.info(f'Found CIK {cik} for ticker {ticker}')
+        
         # Create a temporary directory for the database and CSV
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = os.path.join(temp_dir, 'etf_swaps.db')
             
             # Initialize the extractor with the temporary database
             extractor = ETFSwapDataExtractor(db_path=db_path)
-            
-            # Get the CIK from the database
-            ticker_info = extractor.get_ticker_mapping(ticker)
-            if not ticker_info:
-                flash(f'No CIK found for ticker {ticker}. Please make sure the ticker is in the database.')
-                return render_template('index.html')
-            
-            cik = ticker_info['cik']
-            app.logger.info(f'Found CIK {cik} for ticker {ticker}')
             
             # Process the ticker
             extractor.process_ticker(ticker, cik)
