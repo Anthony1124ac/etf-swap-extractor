@@ -360,6 +360,9 @@ class ETFSwapDataExtractor:
         
         for swap in swap_data:
             try:
+                # Use period_of_report from swap data if available, otherwise use the provided one or filing_date
+                swap_period = swap.get('period_of_report') or period_of_report or filing_date
+                
                 cursor.execute('''
                     INSERT OR REPLACE INTO swap_data 
                     (ticker, filing_date, period_of_report, index_name, index_identifier,
@@ -369,7 +372,7 @@ class ETFSwapDataExtractor:
                 ''', (
                     swap['ticker'],
                     filing_date,
-                    period_of_report,
+                    swap_period,  # Use the determined period
                     swap.get('index_name'),
                     swap.get('index_identifier'),
                     swap.get('counterparty_name'),
