@@ -30,10 +30,10 @@ for file in os.listdir('.'):
 
 # Try multiple possible locations for the CSV file
 possible_paths = [
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'etf_ticker_cik_series_6_16_25.csv'),
-    os.path.join(os.getcwd(), 'etf_ticker_cik_series_6_16_25.csv'),
-    '/opt/render/project/src/etf_ticker_cik_series_6_16_25.csv',
-    'etf_ticker_cik_series_6_16_25.csv'
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv'),
+    os.path.join(os.getcwd(), 'ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv'),
+    '/opt/render/project/src/ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv',
+    'ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv'
 ]
 
 csv_path = None

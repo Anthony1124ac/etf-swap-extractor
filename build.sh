@@ -14,7 +14,7 @@ echo "Installing Python dependencies..."
 pip install -r requirements.txt
 
 # Get the absolute path of the CSV file
-CSV_FILE="etf_ticker_cik_series_6_16_25.csv"
+CSV_FILE="ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv"
 CSV_PATH="$(pwd)/$CSV_FILE"
 TARGET_DIR="/opt/render/project/src"
 
