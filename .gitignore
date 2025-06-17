@@ -40,5 +40,12 @@ logs/
 *.sqlite3
 
 # Temporary files
+.DS_Store
+
+# CSV files (except ticker mappings)
+*.csv
+!ETF Tickers CIK_SERIES_6_16_25 - CIK_SERIES.csv
+
+# Temporary files
 *.csv
 .DS_Store 
