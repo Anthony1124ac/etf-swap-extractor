@@ -38,6 +38,7 @@ class ETFSwapDataExtractor:
                 ticker TEXT NOT NULL,
                 filing_date TEXT NOT NULL,
                 period_of_report TEXT NOT NULL,
+                report_date TEXT,
                 index_name TEXT,
                 index_identifier TEXT,
                 counterparty_name TEXT,
@@ -353,78 +354,68 @@ class ETFSwapDataExtractor:
         return None
     
     def save_swap_data_specific(self, swap_data: List[Dict], filing_date: str, period_of_report: str = None):
-        """Save swap data to database with specific fields"""
-        if not swap_data:
-            return
-        
+        """Save swap data to the database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Create a set to track unique combinations
-        seen_records = set()
-        
-        for data in swap_data:
-            # Create a unique key for this record
-            unique_key = (
-                data.get('ticker'),
-                filing_date,
-                data.get('counterparty_name'),
-                data.get('notional_amt'),
-                data.get('floating_rt_spread')
-            )
-            
-            # Skip if we've seen this combination before
-            if unique_key in seen_records:
-                continue
-                
-            seen_records.add(unique_key)
-            
+        for swap in swap_data:
             try:
                 cursor.execute('''
-                    INSERT OR IGNORE INTO swap_data 
-                    (ticker, filing_date, report_date, index_name, index_identifier,
-                     counterparty_name, fixed_or_floating, floating_rt_index, 
-                     floating_rt_spread, notional_amt, filing_url)
+                    INSERT OR REPLACE INTO swap_data 
+                    (ticker, filing_date, period_of_report, index_name, index_identifier,
+                    counterparty_name, fixed_or_floating, floating_rt_index, floating_rt_spread,
+                    notional_amt, filing_url)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
-                    data.get('ticker'),
+                    swap['ticker'],
                     filing_date,
-                    data.get('period_of_report') or period_of_report or filing_date,
-                    data.get('index_name'),
-                    data.get('index_identifier'),
-                    data.get('counterparty_name'),
-                    data.get('fixed_or_floating'),
-                    data.get('floating_rt_index'),
-                    data.get('floating_rt_spread'),
-                    data.get('notional_amt'),
-                    data.get('filing_url')
+                    period_of_report,
+                    swap.get('index_name'),
+                    swap.get('index_identifier'),
+                    swap.get('counterparty_name'),
+                    swap.get('fixed_or_floating'),
+                    swap.get('floating_rt_index'),
+                    swap.get('floating_rt_spread'),
+                    swap.get('notional_amt'),
+                    swap.get('filing_url')
                 ))
-            except sqlite3.Error as e:
-                logger.error(f"Database error: {e}")
+            except Exception as e:
+                logger.error(f"Error saving swap data: {e}")
+                continue
         
         conn.commit()
         conn.close()
-    
+
     def get_ticker_data_specific(self, ticker: str) -> List[Dict]:
-        """Retrieve all stored data for a specific ticker with your required fields"""
+        """Get all swap data for a specific ticker"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT filing_date, report_date as period_of_report, index_name, index_identifier,
-                   counterparty_name, fixed_or_floating, floating_rt_index, 
-                   floating_rt_spread, notional_amt
-            FROM swap_data 
-            WHERE ticker = ? 
+            SELECT filing_date, period_of_report, index_name, index_identifier,
+                   counterparty_name, fixed_or_floating, floating_rt_index,
+                   floating_rt_spread, notional_amt, filing_url
+            FROM swap_data
+            WHERE ticker = ?
             ORDER BY filing_date DESC
         ''', (ticker,))
         
-        columns = [description[0] for description in cursor.description]
-        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        
+        results = cursor.fetchall()
         conn.close()
-        return results
-    
+        
+        return [{
+            'filing_date': row[0],
+            'period_of_report': row[1],
+            'index_name': row[2],
+            'index_identifier': row[3],
+            'counterparty_name': row[4],
+            'fixed_or_floating': row[5],
+            'floating_rt_index': row[6],
+            'floating_rt_spread': row[7],
+            'notional_amt': row[8],
+            'filing_url': row[9]
+        } for row in results]
+
     def get_historical_filings(self, cik: str, start_date: str = None, end_date: str = None) -> List[Dict]:
         """Get historical N-PORT filings for a given CIK using the correct SEC endpoint"""
         if not start_date:
@@ -509,33 +500,27 @@ class ETFSwapDataExtractor:
                 continue
 
     def export_to_csv(self, output_file: str = "etf_swap_data.csv", ticker: str = None):
-        """Export swap data to CSV - if ticker is specified, only export that ticker's data"""
+        """Export swap data to CSV file"""
         conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        
+        query = '''
+            SELECT ticker, filing_date, period_of_report, index_name, index_identifier,
+                   counterparty_name, fixed_or_floating, floating_rt_index,
+                   floating_rt_spread, notional_amt, filing_url
+            FROM swap_data
+        '''
         
         if ticker:
-            # Export only the specified ticker's data
-            cursor.execute('''
-                SELECT ticker, filing_date, report_date as period_of_report, index_name, index_identifier,
-                       counterparty_name, fixed_or_floating, floating_rt_index, floating_rt_spread, notional_amt, filing_url, extracted_date
-                FROM swap_data
-                WHERE ticker = ?
-                ORDER BY filing_date DESC
-            ''', (ticker,))
+            query += ' WHERE ticker = ?'
+            df = pd.read_sql_query(query, conn, params=(ticker,))
         else:
-            # Export all data
-            cursor.execute('''
-                SELECT ticker, filing_date, report_date as period_of_report, index_name, index_identifier,
-                       counterparty_name, fixed_or_floating, floating_rt_index, floating_rt_spread, notional_amt, filing_url, extracted_date
-                FROM swap_data
-                ORDER BY filing_date DESC
-            ''')
+            df = pd.read_sql_query(query, conn)
         
-        rows = cursor.fetchall()
-        columns = [description[0] for description in cursor.description]
-        df = pd.DataFrame(rows, columns=columns)
-        df.to_csv(output_file, index=False)
         conn.close()
+        
+        # Save to CSV
+        df.to_csv(output_file, index=False)
+        logger.info(f"Data exported to {output_file}")
 
     def import_tickers_from_csv(self, csv_path: str):
         """Import ticker mappings from a CSV file
