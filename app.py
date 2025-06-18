@@ -121,8 +121,8 @@ def process_ticker():
     series_id = ticker_to_series[ticker]
     app.logger.info(f'Found CIK {cik} and series ID {series_id} for ticker {ticker}')
     
-    # Enqueue the background job
-    job = q.enqueue(run_etf_extraction, ticker, cik, series_id)
+    # Enqueue the background job with a longer timeout
+    job = q.enqueue(run_etf_extraction, ticker, cik, series_id, job_timeout=900)
     return render_template('processing.html', job_id=job.get_id())
 
 @app.route('/status/<job_id>')
