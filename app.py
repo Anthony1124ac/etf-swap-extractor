@@ -9,6 +9,7 @@ import sys
 import redis
 from rq import Queue
 import boto3
+from botocore.client import Config
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -42,7 +43,8 @@ def upload_to_s3(local_path, s3_key):
         's3',
         aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
         aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'],
-        region_name=os.environ['AWS_DEFAULT_REGION']
+        region_name=os.environ['AWS_DEFAULT_REGION'],
+        config=Config(signature_version='s3v4')
     )
     bucket = os.environ['S3_BUCKET_NAME']
     s3.upload_file(local_path, bucket, s3_key)
