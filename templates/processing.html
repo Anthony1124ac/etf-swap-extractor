@@ -8,5 +8,14 @@
     <h2>Your job is processing!</h2>
     <p>Job ID: {{ job_id }}</p>
     <p>Please wait a few moments, then <a href="/status/{{ job_id }}">click here to check if your file is ready</a>.</p>
+    <div id="success-message" style="display:none; color: green; font-weight: bold;">
+        Success! Check your Downloads folder for the file.
+    </div>
+    <script>
+    // If redirected to S3, show the success message
+    if (window.location.href.includes('amazonaws.com')) {
+        document.getElementById('success-message').style.display = 'block';
+    }
+    </script>
 </body>
 </html> 

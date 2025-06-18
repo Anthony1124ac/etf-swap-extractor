@@ -344,32 +344,23 @@ class ETFSwapDataExtractor:
             if floating_pmnt_desc is not None:
                 swap_info['fixed_or_floating'] = floating_pmnt_desc.attrib.get('fixedOrFloating')
                 
+                # Always use the value from the XML attribute, do not default
                 floating_rt_index = floating_pmnt_desc.attrib.get('floatingRtIndex', '')
                 if floating_rt_index:
-                    valid_indices = ['1 month Sofr + spread', 'OBFR01', 'FEDL01', 'OBFR']
-                    if floating_rt_index in valid_indices:
-                        swap_info['floating_rt_index'] = floating_rt_index
-                    else:
-                        swap_info['floating_rt_index'] = '1 month Sofr + spread'
+                    swap_info['floating_rt_index'] = floating_rt_index
                 
-                spread_val = floating_pmnt_desc.attrib.get('floatingRtSpread')
-                if spread_val is not None:
+                floating_rt_spread = floating_pmnt_desc.attrib.get('floatingRtSpread', '')
+                if floating_rt_spread:
                     try:
-                        swap_info['floating_rt_spread'] = float(spread_val)
+                        swap_info['floating_rt_spread'] = float(floating_rt_spread)
                     except ValueError:
-                        swap_info['floating_rt_spread'] = spread_val
+                        swap_info['floating_rt_spread'] = floating_rt_spread
             
-            # Only return if we have at least some meaningful swap data
-            required_fields = ['counterparty_name', 'fixed_or_floating', 'floating_rt_index', 'notional_amt']
-            has_swap_data = all(field in swap_info for field in required_fields)
+            return swap_info
             
-            if has_swap_data:
-                return swap_info
-                
         except Exception as e:
-            logger.error(f"Error extracting specific swap info: {e}")
-        
-        return None
+            logger.error(f"Error extracting swap info: {e}")
+            return None
     
     def save_swap_data_specific(self, swap_data: List[Dict], filing_date: str, period_of_report: str = None):
         """Save swap data to the database"""
@@ -546,6 +537,10 @@ class ETFSwapDataExtractor:
             df = pd.read_sql_query(query, conn)
         
         conn.close()
+        
+        # Rename 'index_name' column to 'Designated Reference Portfolio'
+        if 'index_name' in df.columns:
+            df = df.rename(columns={'index_name': 'Designated Reference Portfolio'})
         
         # Save to CSV
         df.to_csv(output_file, index=False)
