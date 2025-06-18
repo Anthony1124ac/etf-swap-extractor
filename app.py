@@ -48,7 +48,11 @@ def upload_to_s3(local_path, s3_key):
     s3.upload_file(local_path, bucket, s3_key)
     url = s3.generate_presigned_url(
         'get_object',
-        Params={'Bucket': bucket, 'Key': s3_key},
+        Params={
+            'Bucket': bucket,
+            'Key': s3_key,
+            'ResponseContentDisposition': f'attachment; filename={s3_key}'
+        },
         ExpiresIn=3600
     )
     return url
