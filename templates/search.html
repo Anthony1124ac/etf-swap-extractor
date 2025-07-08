@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Swap Data</title>
+</head>
+<body>
+    <h2>Search Swap Data</h2>
+    <form method="post">
+        <label for="ticker">Ticker:</label>
+        <input type="text" id="ticker" name="ticker" value="{{ ticker }}">
+        <button type="submit">Search</button>
+    </form>
+    {% if results %}
+        <h3>Results for {{ ticker }}</h3>
+        <table border="1">
+            <tr>
+                {% for col in results[0].keys() %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+            </tr>
+            {% for row in results %}
+                <tr>
+                    {% for col in row.values() %}
+                        <td>{{ col }}</td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </table>
+    {% elif ticker %}
+        <p>No results found for {{ ticker }}.</p>
+    {% endif %}
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html> 

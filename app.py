@@ -10,6 +10,7 @@ import redis
 from rq import Queue
 import boto3
 from botocore.client import Config
+from etf_db import query_swap_data
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-here')
@@ -137,6 +138,16 @@ def job_status(job_id):
         return 'Job failed', 500
     else:
         return 'Job is still running. Please refresh this page in a moment.'
+
+@app.route('/search', methods=['GET', 'POST'])
+def search():
+    results = []
+    ticker = ''
+    if request.method == 'POST':
+        ticker = request.form.get('ticker', '').strip().upper()
+        if ticker:
+            results = query_swap_data(ticker, limit=100)
+    return render_template('search.html', results=results, ticker=ticker)
 
 # Error handlers
 @app.errorhandler(404)
