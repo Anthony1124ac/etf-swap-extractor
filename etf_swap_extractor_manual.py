@@ -13,6 +13,7 @@ import logging
 from bs4 import BeautifulSoup
 import redis
 from rq import Queue
+from etf_db import insert_swap_data, query_swap_data
 
 # Configure logging
 logging.basicConfig(level=logging.ERROR)
@@ -363,41 +364,31 @@ class ETFSwapDataExtractor:
             return None
     
     def save_swap_data_specific(self, swap_data: List[Dict], filing_date: str, period_of_report: str = None):
-        """Save swap data to the database"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
+        """Save swap data to the database and Postgres"""
+        # Save to Postgres
         for swap in swap_data:
             try:
                 # Use period_of_report from swap data if available, otherwise use the provided one or filing_date
                 swap_period = swap.get('period_of_report') or period_of_report or filing_date
-                
-                cursor.execute('''
-                    INSERT OR REPLACE INTO swap_data 
-                    (ticker, filing_date, period_of_report, index_name, index_identifier,
-                    counterparty_name, fixed_or_floating, floating_rt_index, floating_rt_spread,
-                    notional_amt, filing_url)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    swap['ticker'],
-                    filing_date,
-                    swap_period,  # Use the determined period
-                    swap.get('index_name'),
-                    swap.get('index_identifier'),
-                    swap.get('counterparty_name'),
-                    swap.get('fixed_or_floating'),
-                    swap.get('floating_rt_index'),
-                    swap.get('floating_rt_spread'),
-                    swap.get('notional_amt'),
-                    swap.get('filing_url')
-                ))
+                swap_record = {
+                    'ticker': swap['ticker'],
+                    'filing_date': filing_date,
+                    'period_of_report': swap_period,
+                    'Designated Reference Portfolio': swap.get('index_name'),
+                    'index_identifier': swap.get('index_identifier'),
+                    'counterparty_name': swap.get('counterparty_name'),
+                    'fixed_or_floating': swap.get('fixed_or_floating'),
+                    'floating_rt_index': swap.get('floating_rt_index'),
+                    'floating_rt_spread': swap.get('floating_rt_spread'),
+                    'notional_amt': swap.get('notional_amt'),
+                    'filing_url': swap.get('filing_url')
+                }
+                insert_swap_data(swap_record)
             except Exception as e:
-                logger.error(f"Error saving swap data: {e}")
+                logger.error(f"Error saving swap data to Postgres: {e}")
                 continue
-        
-        conn.commit()
-        conn.close()
-    
+        # ... (optionally keep SQLite code for now) ...
+
     def get_ticker_data_specific(self, ticker: str) -> List[Dict]:
         """Get all swap data for a specific ticker"""
         conn = sqlite3.connect(self.db_path)
@@ -663,3 +654,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Add a function to query and print data from Postgres
+def print_postgres_data(ticker, limit=10):
+    results = query_swap_data(ticker, limit)
+    for row in results:
+        print(row)
