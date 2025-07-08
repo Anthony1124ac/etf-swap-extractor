@@ -9,23 +9,26 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('batch_load.log'),
+        logging.FileHandler('test_batch_load.log'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-def main():
+def test_batch_loader():
+    """Test the batch loader with first 3 tickers"""
     # Load tickers from CSV
     csv_path = 'etf_tickers.csv'
     logger.info(f"Loading tickers from {csv_path}")
     
     try:
         df = pd.read_csv(csv_path)
-        tickers = df['Ticker'].astype(str).str.upper().tolist()
-        ciks = df['CIK'].astype(str).str.zfill(10).tolist()
-        series_ids = df['Series'].astype(str).tolist()
-        logger.info(f"Loaded {len(tickers)} tickers from CSV")
+        # Take only first 3 tickers for testing
+        df_test = df.head(3)
+        tickers = df_test['Ticker'].astype(str).str.upper().tolist()
+        ciks = df_test['CIK'].astype(str).str.zfill(10).tolist()
+        series_ids = df_test['Series'].astype(str).tolist()
+        logger.info(f"Testing with {len(tickers)} tickers: {tickers}")
     except Exception as e:
         logger.error(f"Error loading CSV file: {e}")
         return
@@ -38,7 +41,7 @@ def main():
     failed_tickers = 0
     failed_list = []
     
-    logger.info(f"Starting batch processing of {total_tickers} tickers")
+    logger.info(f"Starting test batch processing of {total_tickers} tickers")
     start_time = datetime.now()
     
     for i, (ticker, cik, series_id) in enumerate(zip(tickers, ciks, series_ids), 1):
@@ -47,7 +50,7 @@ def main():
         try:
             # Add a small delay to be respectful to SEC servers
             if i > 1:
-                time.sleep(1)
+                time.sleep(2)  # Longer delay for testing
             
             extractor.process_ticker(ticker, cik, series_id=series_id)
             successful_tickers += 1
@@ -65,7 +68,7 @@ def main():
     
     # Summary
     logger.info("=" * 60)
-    logger.info("BATCH PROCESSING COMPLETE")
+    logger.info("TEST BATCH PROCESSING COMPLETE")
     logger.info("=" * 60)
     logger.info(f"Total tickers: {total_tickers}")
     logger.info(f"Successful: {successful_tickers}")
@@ -77,6 +80,13 @@ def main():
         logger.info(f"Failed tickers: {', '.join(failed_list)}")
     
     logger.info("=" * 60)
+    
+    if successful_tickers == total_tickers:
+        logger.info("✓ Test passed! All tickers processed successfully.")
+        logger.info("You can now run the full batch loader.")
+    else:
+        logger.info("✗ Test failed! Some tickers failed to process.")
+        logger.info("Check the logs for details before running the full batch.")
 
 if __name__ == "__main__":
-    main() 
+    test_batch_loader() 
