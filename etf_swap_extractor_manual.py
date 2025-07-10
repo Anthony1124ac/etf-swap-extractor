@@ -20,8 +20,18 @@ logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
 
 redis_url = os.environ.get('REDIS_URL')
-redis_conn = redis.from_url(redis_url)
-q = Queue(connection=redis_conn)
+if redis_url:
+    try:
+        redis_conn = redis.from_url(redis_url)
+        q = Queue(connection=redis_conn)
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis: {e}")
+        redis_conn = None
+        q = None
+else:
+    logger.info("No REDIS_URL provided, running without Redis")
+    redis_conn = None
+    q = None
 
 class ETFSwapDataExtractor:
     def __init__(self, db_path: str = "etf_swap_data.db"):
