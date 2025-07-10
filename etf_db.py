@@ -26,6 +26,10 @@ CREATE TABLE IF NOT EXISTS swap_data (
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
+def get_db_connection():
+    """Alias for compatibility with other scripts."""
+    return get_conn()
+
 def create_table():
     with get_conn() as conn:
         with conn.cursor() as cur:
