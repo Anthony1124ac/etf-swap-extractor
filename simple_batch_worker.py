@@ -3,6 +3,7 @@ import logging
 import time
 import sys
 from datetime import datetime
+import traceback
 from etf_swap_extractor_manual import ETFSwapDataExtractor
 
 # Set up logging for background worker
@@ -48,10 +49,15 @@ def main():
         logger.info(f"Clearing existing data for {ticker}")
         extractor.clear_ticker_data(ticker)
         logger.info(f"Starting processing for {ticker}")
-        extractor.process_ticker(ticker, cik, series_id=series_id)
-        logger.info(f"✓ Successfully processed {ticker}")
+        try:
+            extractor.process_ticker(ticker, cik, series_id=series_id)
+            logger.info(f"✓ Successfully processed {ticker}")
+        except Exception as e:
+            logger.error(f"✗ Error processing {ticker}: {e}")
+            logger.error(traceback.format_exc())
     except Exception as e:
-        logger.error(f"✗ Error processing {ticker}: {e}")
+        logger.error(f"✗ Fatal error for {ticker}: {e}")
+        logger.error(traceback.format_exc())
     logger.info("=" * 80)
     logger.info("Worker finished!")
 
