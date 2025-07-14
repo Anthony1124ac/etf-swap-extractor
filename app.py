@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, send_file, flash, redirect
-from etf_swap_extractor_manual import ETFSwapDataExtractor
+from etf_swap_extractor_manual_fixed import ETFSwapDataExtractor
 import os
 import tempfile
 import logging
